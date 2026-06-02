@@ -336,13 +336,30 @@ export function extractAllFifthLevelRows(
   const seen = new Set<string>();
 
   for (const row of rows) {
-    const classItem = row.items.find((it) => isFifthLevelClassification(it.str.trim()));
-    if (!classItem) continue;
-    const classification = classItem.str.trim();
+    let classification: string | null = null;
+    let classItem: PdfItem | null = null;
+    for (const it of row.items) {
+      const s = it.str.trim();
+      if (isFifthLevelClassification(s)) {
+        classification = s;
+        classItem = it;
+        break;
+      }
+      const match = s.split(/\s+/).find((p) => isFifthLevelClassification(p));
+      if (match) {
+        classification = match;
+        classItem = it;
+        break;
+      }
+    }
+    if (!classItem || !classification) continue;
     if (seen.has(classification)) continue;
 
     const numberItems = row.items.filter((it) => isNumberToken(it.str.trim()));
-    if (numberItems.length < nCols) continue;
+    if (numberItems.length < nCols) {
+      console.log("[pdf-parser] Pulando", classification, "- números insuficientes:", numberItems.length, "<", nCols, "row:", row.raw);
+      continue;
+    }
 
     const picked: (PdfItem | null)[] = new Array(nCols).fill(null);
     for (const n of numberItems) {
@@ -356,7 +373,14 @@ export function extractAllFifthLevelRows(
         }
       }
     }
-    if (picked.some((p) => !p)) continue;
+    if (picked.some((p) => !p)) {
+      console.log("[pdf-parser] Pulando", classification, "- colunas não preenchidas. picked:",
+        picked.map((p, i) => ({ col: headers[i], val: p?.str ?? null })),
+        "| boundaries:", boundaries,
+        "| numbers:", numberItems.map((n) => ({ s: n.str, right: n.x + n.width })));
+      continue;
+    }
+
 
     const firstNumX = Math.min(...numberItems.map((n) => n.x));
     const description = row.items
