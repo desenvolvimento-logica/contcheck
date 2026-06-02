@@ -41,8 +41,8 @@ export function CompareLaunches({ onBack }: Props) {
         });
         return;
       }
-      const v1 = compareVariation("Mês 1 x Mês 2", result.m1, result.m2);
-      const v2 = compareVariation("Mês 2 x Mês 3", result.m2, result.m3);
+      const v1 = compareVariation(`${result.headers[0]} → ${result.headers[1]}`, result.m1, result.m2);
+      const v2 = compareVariation(`${result.headers[1]} → ${result.headers[2]}`, result.m2, result.m3);
       setState({ kind: "done", result, v1, v2 });
     } catch (e) {
       setState({
