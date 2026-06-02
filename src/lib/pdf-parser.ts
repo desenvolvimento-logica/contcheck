@@ -191,21 +191,37 @@ export function findClassificationRow(
   classification: string,
 ): CompareResult | null {
   const header = findColumnHeaders(rows);
-  if (!header) return null;
+  if (!header) {
+    console.warn("[pdf-parser] Cabeçalho não encontrado. Buscando 'Descrição' nas linhas:",
+      rows.slice(0, 30).map((r) => r.raw));
+    return null;
+  }
+  console.log("[pdf-parser] Cabeçalho detectado:", header);
   const headers = header.labels;
   const nCols = headers.length;
 
+  const candidateRows: Array<{ raw: string; reason: string }> = [];
+
   for (const row of rows) {
-    const classItem = row.items.find((it) =>
-      it.str.trim().split(/\s+/).includes(classification),
-    );
+    const classItem = row.items.find((it) => {
+      const s = it.str.trim();
+      return (
+        s === classification ||
+        s.split(/\s+/).includes(classification) ||
+        s.includes(classification)
+      );
+    });
     if (!classItem) continue;
 
     const numberItems = row.items.filter((it) => isNumberToken(it.str.trim()));
-    if (numberItems.length < nCols) continue;
+    if (numberItems.length < nCols) {
+      candidateRows.push({
+        raw: row.raw,
+        reason: `números encontrados=${numberItems.length} < colunas=${nCols}`,
+      });
+      continue;
+    }
 
-    // Assign each number to a month column by right-edge alignment.
-    // Numbers past the last month column (Saldo Acumulado, etc.) are ignored.
     const boundaries = [...header.xs, header.rightBoundary];
     const MARGIN = 5;
     const picked: (PdfItem | null)[] = new Array(nCols).fill(null);
@@ -221,7 +237,17 @@ export function findClassificationRow(
       }
     }
 
-    if (picked.some((p) => !p)) continue;
+    if (picked.some((p) => !p)) {
+      candidateRows.push({
+        raw: row.raw,
+        reason: `colunas não preenchidas. picked=${JSON.stringify(
+          picked.map((p, i) => ({ col: headers[i], val: p?.str ?? null })),
+        )} | boundaries=${JSON.stringify(boundaries)} | numbers=${JSON.stringify(
+          numberItems.map((n) => ({ s: n.str, x: n.x, right: n.x + n.width })),
+        )}`,
+      });
+      continue;
+    }
 
     const firstNumX = Math.min(...numberItems.map((n) => n.x));
     const desc = row.items
@@ -232,6 +258,7 @@ export function findClassificationRow(
       .replace(/\s+/g, " ")
       .trim();
 
+    console.log("[pdf-parser] Linha aceita:", { classification, desc, values: picked.map((p) => p!.str) });
     return {
       classification,
       description: desc,
@@ -239,6 +266,11 @@ export function findClassificationRow(
       headers,
     };
   }
+
+  console.warn(
+    `[pdf-parser] Classificação "${classification}" não encontrada. ${candidateRows.length} candidatas rejeitadas:`,
+    candidateRows,
+  );
   return null;
 }
 
