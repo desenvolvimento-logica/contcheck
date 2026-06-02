@@ -1,6 +1,6 @@
 // Client-only PDF parsing utilities for Domínio reports.
 
-export type PdfItem = { str: string; x: number; y: number };
+export type PdfItem = { str: string; x: number; y: number; width: number };
 export type PdfRow = {
   tokens: string[];
   items: PdfItem[];
@@ -23,8 +23,8 @@ async function getPdfjs() {
 
 /**
  * Extract rows from a PDF by clustering text items by Y position.
- * Adjacent items on the same line are merged when their X distance is small
- * (handles cases where pdf.js splits a single visual token into pieces).
+ * Each PdfItem keeps its real width from pdf.js so callers can compute the
+ * right-edge x (x + width) — Domínio reports right-align all numeric columns.
  */
 export async function extractRows(file: File): Promise<PdfRow[]> {
   const pdfjs = await getPdfjs();
@@ -38,7 +38,8 @@ export async function extractRows(file: File): Promise<PdfRow[]> {
     const items: PdfItem[] = [];
     for (const it of content.items as Array<{ str: string; transform: number[]; width?: number }>) {
       if (!it.str || !it.str.trim()) continue;
-      items.push({ str: it.str, x: it.transform[4], y: it.transform[5] });
+      const w = typeof it.width === "number" && it.width > 0 ? it.width : it.str.length * 5;
+      items.push({ str: it.str, x: it.transform[4], y: it.transform[5], width: w });
     }
     const buckets = new Map<number, PdfItem[]>();
     for (const it of items) {
@@ -49,12 +50,14 @@ export async function extractRows(file: File): Promise<PdfRow[]> {
     const keys = Array.from(buckets.keys()).sort((a, b) => b - a);
     for (const k of keys) {
       const line = buckets.get(k)!.sort((a, b) => a.x - b.x);
-      // Merge adjacent items that are visually contiguous (gap < ~3px).
+      // Merge fragments that are visually contiguous (using real widths from pdf.js).
       const merged: PdfItem[] = [];
       for (const it of line) {
         const last = merged[merged.length - 1];
-        if (last && it.x - (last.x + last.str.length * 3) < 3 && it.str.trim().length > 0 && !/\s/.test(it.str)) {
+        const gap = last ? it.x - (last.x + last.width) : Infinity;
+        if (last && gap < 1.5 && !/\s/.test(it.str) && !/\s/.test(last.str)) {
           last.str += it.str;
+          last.width = it.x + it.width - last.x;
         } else {
           merged.push({ ...it });
         }
