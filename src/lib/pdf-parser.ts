@@ -305,6 +305,102 @@ export function compareVariation(
   };
 }
 
+export type ClassificationRow = {
+  classification: string;
+  description: string;
+  values: number[];
+  /** Variation % from previous month for each column (variations[0] = null). */
+  variations: (number | null)[];
+  /** Average of absolute variations across all month-to-month comparisons. */
+  avgVariation: number;
+  /** True if any month-to-month variation exceeds 30%. */
+  hasDivergence: boolean;
+};
+
+export type AllClassificationsResult = {
+  headers: string[];
+  rows: ClassificationRow[];
+};
+
+export function extractAllFifthLevelRows(
+  rows: PdfRow[],
+): AllClassificationsResult | null {
+  const header = findColumnHeaders(rows);
+  if (!header) return null;
+  const headers = header.labels;
+  const nCols = headers.length;
+  const boundaries = [...header.xs, header.rightBoundary];
+  const MARGIN = 5;
+
+  const out: ClassificationRow[] = [];
+  const seen = new Set<string>();
+
+  for (const row of rows) {
+    const classItem = row.items.find((it) => isFifthLevelClassification(it.str.trim()));
+    if (!classItem) continue;
+    const classification = classItem.str.trim();
+    if (seen.has(classification)) continue;
+
+    const numberItems = row.items.filter((it) => isNumberToken(it.str.trim()));
+    if (numberItems.length < nCols) continue;
+
+    const picked: (PdfItem | null)[] = new Array(nCols).fill(null);
+    for (const n of numberItems) {
+      const rightEdge = n.x + n.width;
+      for (let i = 0; i < nCols; i++) {
+        if (rightEdge > boundaries[i] - 30 && rightEdge <= boundaries[i + 1] - MARGIN + 2) {
+          if (!picked[i] || rightEdge > picked[i]!.x + picked[i]!.width) {
+            picked[i] = n;
+          }
+          break;
+        }
+      }
+    }
+    if (picked.some((p) => !p)) continue;
+
+    const firstNumX = Math.min(...numberItems.map((n) => n.x));
+    const description = row.items
+      .filter((it) => it.x > classItem.x + classItem.width - 0.1 && it.x < firstNumX)
+      .map((it) => it.str.trim())
+      .filter(Boolean)
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    const values = picked.map((p) => parseBrlNumber(p!.str));
+    const variations: (number | null)[] = [null];
+    for (let i = 1; i < values.length; i++) {
+      const base = Math.abs(values[i - 1]);
+      const pct = base === 0
+        ? (values[i] === 0 ? 0 : Infinity)
+        : ((values[i] - values[i - 1]) / base) * 100;
+      variations.push(pct);
+    }
+    const finiteVars = variations
+      .slice(1)
+      .filter((v): v is number => v !== null && Number.isFinite(v))
+      .map((v) => Math.abs(v));
+    const avgVariation = finiteVars.length
+      ? finiteVars.reduce((a, b) => a + b, 0) / finiteVars.length
+      : 0;
+    const hasDivergence = variations.some(
+      (v) => v !== null && Number.isFinite(v) && Math.abs(v) > 30,
+    );
+
+    seen.add(classification);
+    out.push({
+      classification,
+      description,
+      values,
+      variations,
+      avgVariation,
+      hasDivergence,
+    });
+  }
+
+  return { headers, rows: out };
+}
+
 // ---------- Functionality 2: Inverted balance ----------
 
 export type AccountRow = {
