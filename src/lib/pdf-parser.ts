@@ -104,9 +104,14 @@ export function isNumberToken(t: string): boolean {
 }
 
 const CLASSIFICATION = /^\d+(\.\d+){2,}$/;
+const FIFTH_LEVEL = /^\d+\.\d+\.\d+\.\d+\.\d+$/;
 
 export function isClassification(t: string): boolean {
   return CLASSIFICATION.test(t);
+}
+
+export function isFifthLevelClassification(t: string): boolean {
+  return FIFTH_LEVEL.test(t);
 }
 
 // ---------- Functionality 1: Compare launches ----------
