@@ -1,6 +1,6 @@
 // Client-only PDF parsing utilities for Domínio reports.
 
-export type PdfItem = { str: string; x: number; y: number };
+export type PdfItem = { str: string; x: number; y: number; width: number };
 export type PdfRow = {
   tokens: string[];
   items: PdfItem[];
@@ -23,8 +23,8 @@ async function getPdfjs() {
 
 /**
  * Extract rows from a PDF by clustering text items by Y position.
- * Adjacent items on the same line are merged when their X distance is small
- * (handles cases where pdf.js splits a single visual token into pieces).
+ * Each PdfItem keeps its real width from pdf.js so callers can compute the
+ * right-edge x (x + width) — Domínio reports right-align all numeric columns.
  */
 export async function extractRows(file: File): Promise<PdfRow[]> {
   const pdfjs = await getPdfjs();
@@ -38,23 +38,33 @@ export async function extractRows(file: File): Promise<PdfRow[]> {
     const items: PdfItem[] = [];
     for (const it of content.items as Array<{ str: string; transform: number[]; width?: number }>) {
       if (!it.str || !it.str.trim()) continue;
-      items.push({ str: it.str, x: it.transform[4], y: it.transform[5] });
+      const w = typeof it.width === "number" && it.width > 0 ? it.width : it.str.length * 5;
+      items.push({ str: it.str, x: it.transform[4], y: it.transform[5], width: w });
     }
-    const buckets = new Map<number, PdfItem[]>();
-    for (const it of items) {
-      const key = Math.round(it.y / 2) * 2;
-      if (!buckets.has(key)) buckets.set(key, []);
-      buckets.get(key)!.push(it);
+    // Cluster items into rows by Y proximity (tolerance ~2.5pt). Within a row,
+    // items can sit on slightly different baselines (e.g. numbers vs. text),
+    // so a fixed-size bucket is unreliable.
+    const sorted = [...items].sort((a, b) => b.y - a.y);
+    const lines: PdfItem[][] = [];
+    const Y_TOL = 2.5;
+    for (const it of sorted) {
+      const last = lines[lines.length - 1];
+      if (last && Math.abs(last[0].y - it.y) <= Y_TOL) {
+        last.push(it);
+      } else {
+        lines.push([it]);
+      }
     }
-    const keys = Array.from(buckets.keys()).sort((a, b) => b - a);
-    for (const k of keys) {
-      const line = buckets.get(k)!.sort((a, b) => a.x - b.x);
-      // Merge adjacent items that are visually contiguous (gap < ~3px).
+    for (const lineRaw of lines) {
+      const line = lineRaw.sort((a, b) => a.x - b.x);
+      // Merge fragments that are visually contiguous (using real widths from pdf.js).
       const merged: PdfItem[] = [];
       for (const it of line) {
         const last = merged[merged.length - 1];
-        if (last && it.x - (last.x + last.str.length * 3) < 3 && it.str.trim().length > 0 && !/\s/.test(it.str)) {
+        const gap = last ? it.x - (last.x + last.width) : Infinity;
+        if (last && gap < 1.5 && !/\s/.test(it.str) && !/\s/.test(last.str)) {
           last.str += it.str;
+          last.width = it.x + it.width - last.x;
         } else {
           merged.push({ ...it });
         }
@@ -116,18 +126,24 @@ const HEADER_TOKEN =
 
 export type HeaderInfo = {
   labels: [string, string, string];
+  /** Left-edge x of each of the 3 month headers. */
   xs: [number, number, number];
+  /** Right boundary x for column 3 (taken from the next header like "Saldo", or synthetic). */
+  rightBoundary: number;
 };
 
 export function findColumnHeaders(rows: PdfRow[]): HeaderInfo | null {
   for (const row of rows) {
     const matches = row.items.filter((it) => HEADER_TOKEN.test(it.str.trim()));
     if (matches.length >= 3) {
-      // Take the last three date headers on the row (in case extra ones appear before).
-      const picked = matches.slice(-3);
+      const picked = matches.slice(0, 3);
+      // Find the first non-date item after the 3rd month header — that's the right boundary.
+      const after = row.items.find((it) => it.x > picked[2].x + 5 && !HEADER_TOKEN.test(it.str.trim()));
+      const rightBoundary = after ? after.x : picked[2].x + (picked[2].x - picked[1].x);
       return {
         labels: [picked[0].str.trim(), picked[1].str.trim(), picked[2].str.trim()],
         xs: [picked[0].x, picked[1].x, picked[2].x],
+        rightBoundary,
       };
     }
   }
@@ -142,29 +158,45 @@ export function findClassificationRow(
   const headers: [string, string, string] = header?.labels ?? ["Mês 1", "Mês 2", "Mês 3"];
 
   for (const row of rows) {
-    const classItem = row.items.find((it) => it.str.trim() === classification);
+    const classItem = row.items.find((it) =>
+      it.str.trim().split(/\s+/).includes(classification),
+    );
     if (!classItem) continue;
 
     const numberItems = row.items.filter((it) => isNumberToken(it.str.trim()));
     if (numberItems.length < 3) continue;
 
-    // Pick the numeric item whose x is closest to each header x. If no headers,
-    // fall back to the first three numbers on the row.
-    let picked: PdfItem[];
+    // Domínio right-aligns numbers within each column. Use right edge (x + width)
+    // and assign each number to the column whose [left, nextLeft) range it falls in.
+    // A number "belongs to" column i when its right edge is within ~5pt before the
+    // next column's left edge (i.e., right_edge < boundary[i+1] - margin).
+    let picked: (PdfItem | null)[];
     if (header) {
-      picked = header.xs.map((hx) =>
-        numberItems.reduce((best, cur) =>
-          Math.abs(cur.x - hx) < Math.abs(best.x - hx) ? cur : best,
-        ),
-      );
+      const boundaries = [header.xs[0], header.xs[1], header.xs[2], header.rightBoundary];
+      const MARGIN = 5; // small gap before the next column header
+      picked = [null, null, null];
+      for (const n of numberItems) {
+        const rightEdge = n.x + n.width;
+        for (let i = 0; i < 3; i++) {
+          if (rightEdge > boundaries[i] - 30 && rightEdge <= boundaries[i + 1] - MARGIN + 2) {
+            // Keep the rightmost candidate per column (in case of fragments).
+            if (!picked[i] || rightEdge > picked[i]!.x + picked[i]!.width) {
+              picked[i] = n;
+            }
+            break;
+          }
+        }
+      }
     } else {
       picked = numberItems.slice(0, 3);
     }
 
+    if (!picked[0] || !picked[1] || !picked[2]) continue;
+
     // Description = tokens between classification and the first numeric item.
     const firstNumX = Math.min(...numberItems.map((n) => n.x));
     const desc = row.items
-      .filter((it) => it.x > classItem.x && it.x < firstNumX)
+      .filter((it) => it.x > classItem.x + classItem.width - 0.1 && it.x < firstNumX)
       .map((it) => it.str.trim())
       .filter(Boolean)
       .join(" ")
@@ -174,9 +206,9 @@ export function findClassificationRow(
     return {
       classification,
       description: desc,
-      m1: parseBrlNumber(picked[0].str),
-      m2: parseBrlNumber(picked[1].str),
-      m3: parseBrlNumber(picked[2].str),
+      m1: parseBrlNumber(picked[0]!.str),
+      m2: parseBrlNumber(picked[1]!.str),
+      m3: parseBrlNumber(picked[2]!.str),
       headers,
     };
   }
