@@ -195,36 +195,37 @@ function DraggableTable({ result }: { result: AllClassificationsResult }) {
       }`}
     >
       <table className="w-full min-w-[720px] border-separate border-spacing-0 text-sm">
-        <thead className="bg-muted/40">
+        <thead>
           <tr>
-            <th className="sticky left-0 z-20 bg-muted/40 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-r border-border shadow-[1px_0_0_0_var(--border)]">
+            <th className="sticky left-0 z-30 w-[140px] min-w-[140px] bg-card px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-r border-border">
               Classificação
             </th>
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
+            <th className="sticky left-[140px] z-30 w-[260px] min-w-[260px] bg-card px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-r border-border">
               Descrição
             </th>
             {result.headers.map((h) => (
               <th
                 key={h}
-                className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border"
+                className="bg-muted/40 px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border"
               >
                 {h}
               </th>
             ))}
-            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
+            <th className="bg-muted/40 px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
               Média de Variação
             </th>
           </tr>
         </thead>
         <tbody>
           {result.rows.map((r) => (
-            <tr key={r.classification} className="group">
-              <td className="sticky left-0 z-10 bg-card group-hover:bg-muted/30 px-4 py-3 font-mono text-xs text-foreground border-b border-r border-border shadow-[1px_0_0_0_var(--border)]">
+            <tr key={r.classification}>
+              <td className="sticky left-0 z-20 w-[140px] min-w-[140px] bg-card px-4 py-3 font-mono text-xs text-foreground border-b border-r border-border">
                 {r.classification}
               </td>
-              <td className="px-4 py-3 text-xs text-muted-foreground border-b border-border">
+              <td className="sticky left-[140px] z-20 w-[260px] min-w-[260px] bg-card px-4 py-3 text-xs text-muted-foreground border-b border-r border-border">
                 {r.description || "—"}
               </td>
+
               {r.values.map((v, i) => {
                 const pct = r.variations[i];
                 const divergent =
