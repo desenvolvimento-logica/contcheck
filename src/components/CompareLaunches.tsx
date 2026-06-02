@@ -41,8 +41,8 @@ export function CompareLaunches({ onBack }: Props) {
         });
         return;
       }
-      const v1 = compareVariation("Mês 1 x Mês 2", result.m1, result.m2);
-      const v2 = compareVariation("Mês 2 x Mês 3", result.m2, result.m3);
+      const v1 = compareVariation(`${result.headers[0]} → ${result.headers[1]}`, result.m1, result.m2);
+      const v2 = compareVariation(`${result.headers[1]} → ${result.headers[2]}`, result.m2, result.m3);
       setState({ kind: "done", result, v1, v2 });
     } catch (e) {
       setState({
@@ -147,9 +147,9 @@ function ResultView({
         </h2>
         <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <Stat label="Classificação" value={result.classification} mono />
-          <Stat label="Mês 1" value={formatBRL(result.m1)} />
-          <Stat label="Mês 2" value={formatBRL(result.m2)} />
-          <Stat label="Mês 3" value={formatBRL(result.m3)} />
+          <Stat label={result.headers[0]} value={formatBRL(result.m1)} />
+          <Stat label={result.headers[1]} value={formatBRL(result.m2)} />
+          <Stat label={result.headers[2]} value={formatBRL(result.m3)} />
         </dl>
         {result.description && (
           <p className="mt-4 text-xs text-muted-foreground">
