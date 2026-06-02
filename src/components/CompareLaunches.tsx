@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, Loader2, ArrowLeft } from "lucide-react";
 import { UploadArea } from "./UploadArea";
 import {
@@ -139,79 +139,132 @@ function ResultTable({ result }: { result: AllClassificationsResult }) {
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
-        <table className="w-full min-w-[720px] text-sm">
-          <thead className="bg-muted/40">
-            <tr className="border-b border-border">
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Classificação
+      <DraggableTable result={result} />
+    </div>
+  );
+}
+
+function DraggableTable({ result }: { result: AllClassificationsResult }) {
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const dragState = useRef<{ startX: number; startScroll: number; active: boolean }>({
+    startX: 0,
+    startScroll: 0,
+    active: false,
+  });
+  const [dragging, setDragging] = useState(false);
+
+  function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    const el = scrollerRef.current;
+    if (!el) return;
+    // Don't hijack clicks on interactive children
+    const target = e.target as HTMLElement;
+    if (target.closest("button, a, input, select, textarea")) return;
+    dragState.current = {
+      startX: e.clientX,
+      startScroll: el.scrollLeft,
+      active: true,
+    };
+    el.setPointerCapture(e.pointerId);
+    setDragging(true);
+  }
+
+  function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!dragState.current.active) return;
+    const el = scrollerRef.current;
+    if (!el) return;
+    el.scrollLeft = dragState.current.startScroll - (e.clientX - dragState.current.startX);
+  }
+
+  function endDrag(e: React.PointerEvent<HTMLDivElement>) {
+    if (!dragState.current.active) return;
+    dragState.current.active = false;
+    setDragging(false);
+    const el = scrollerRef.current;
+    if (el && el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
+  }
+
+  return (
+    <div
+      ref={scrollerRef}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+      className={`overflow-x-auto rounded-lg border border-border bg-card shadow-sm select-none ${
+        dragging ? "cursor-grabbing" : "cursor-grab"
+      }`}
+    >
+      <table className="w-full min-w-[720px] border-separate border-spacing-0 text-sm">
+        <thead className="bg-muted/40">
+          <tr>
+            <th className="sticky left-0 z-20 bg-muted/40 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-r border-border shadow-[1px_0_0_0_var(--border)]">
+              Classificação
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
+              Descrição
+            </th>
+            {result.headers.map((h) => (
+              <th
+                key={h}
+                className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border"
+              >
+                {h}
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Descrição
-              </th>
-              {result.headers.map((h) => (
-                <th
-                  key={h}
-                  className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground"
-                >
-                  {h}
-                </th>
-              ))}
-              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Média de Variação
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {result.rows.map((r) => (
-              <tr key={r.classification} className="border-b border-border last:border-0">
-                <td className="px-4 py-3 font-mono text-xs text-foreground">
-                  {r.classification}
-                </td>
-                <td className="px-4 py-3 text-xs text-muted-foreground">
-                  {r.description || "—"}
-                </td>
-                {r.values.map((v, i) => {
-                  const pct = r.variations[i];
-                  const divergent =
-                    pct !== null && Number.isFinite(pct) && Math.abs(pct) > THRESHOLD;
-                  return (
-                    <td
-                      key={i}
-                      className={`px-4 py-3 text-right tabular-nums ${
-                        divergent
-                          ? "bg-warning/20 text-warning-foreground font-semibold"
-                          : "text-foreground"
-                      }`}
-                      title={pct !== null ? `Variação: ${formatPct(pct)}` : undefined}
-                    >
-                      <div>{formatBRL(v)}</div>
-                      {pct !== null && (
-                        <div
-                          className={`text-[10px] ${
-                            divergent ? "text-warning-foreground" : "text-muted-foreground"
-                          }`}
-                        >
-                          {formatPct(pct)}
-                        </div>
-                      )}
-                    </td>
-                  );
-                })}
-                <td
-                  className={`px-4 py-3 text-right tabular-nums ${
-                    r.hasDivergence
-                      ? "text-warning-foreground font-semibold"
-                      : "text-foreground"
-                  }`}
-                >
-                  {r.avgVariation.toFixed(2)}%
-                </td>
-              </tr>
             ))}
-          </tbody>
-        </table>
-      </div>
+            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
+              Média de Variação
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {result.rows.map((r) => (
+            <tr key={r.classification} className="group">
+              <td className="sticky left-0 z-10 bg-card group-hover:bg-muted/30 px-4 py-3 font-mono text-xs text-foreground border-b border-r border-border shadow-[1px_0_0_0_var(--border)]">
+                {r.classification}
+              </td>
+              <td className="px-4 py-3 text-xs text-muted-foreground border-b border-border">
+                {r.description || "—"}
+              </td>
+              {r.values.map((v, i) => {
+                const pct = r.variations[i];
+                const divergent =
+                  pct !== null && Number.isFinite(pct) && Math.abs(pct) > THRESHOLD;
+                return (
+                  <td
+                    key={i}
+                    className={`px-4 py-3 text-right tabular-nums border-b border-border ${
+                      divergent
+                        ? "bg-warning/20 text-warning-foreground font-semibold"
+                        : "text-foreground"
+                    }`}
+                    title={pct !== null ? `Variação: ${formatPct(pct)}` : undefined}
+                  >
+                    <div>{formatBRL(v)}</div>
+                    {pct !== null && (
+                      <div
+                        className={`text-[10px] ${
+                          divergent ? "text-warning-foreground" : "text-muted-foreground"
+                        }`}
+                      >
+                        {formatPct(pct)}
+                      </div>
+                    )}
+                  </td>
+                );
+              })}
+              <td
+                className={`px-4 py-3 text-right tabular-nums border-b border-border ${
+                  r.hasDivergence
+                    ? "text-warning-foreground font-semibold"
+                    : "text-foreground"
+                }`}
+              >
+                {r.avgVariation.toFixed(2)}%
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
