@@ -1,7 +1,9 @@
 // Client-only PDF parsing utilities for Domínio reports.
 
+export type PdfItem = { str: string; x: number; y: number };
 export type PdfRow = {
   tokens: string[];
+  items: PdfItem[];
   raw: string;
 };
 
@@ -21,6 +23,8 @@ async function getPdfjs() {
 
 /**
  * Extract rows from a PDF by clustering text items by Y position.
+ * Adjacent items on the same line are merged when their X distance is small
+ * (handles cases where pdf.js splits a single visual token into pieces).
  */
 export async function extractRows(file: File): Promise<PdfRow[]> {
   const pdfjs = await getPdfjs();
@@ -31,14 +35,12 @@ export async function extractRows(file: File): Promise<PdfRow[]> {
   for (let p = 1; p <= doc.numPages; p++) {
     const page = await doc.getPage(p);
     const content = await page.getTextContent();
-    type Item = { str: string; x: number; y: number };
-    const items: Item[] = [];
-    for (const it of content.items as Array<{ str: string; transform: number[] }>) {
+    const items: PdfItem[] = [];
+    for (const it of content.items as Array<{ str: string; transform: number[]; width?: number }>) {
       if (!it.str || !it.str.trim()) continue;
       items.push({ str: it.str, x: it.transform[4], y: it.transform[5] });
     }
-    // Group by y (rounded to 2px buckets).
-    const buckets = new Map<number, Item[]>();
+    const buckets = new Map<number, PdfItem[]>();
     for (const it of items) {
       const key = Math.round(it.y / 2) * 2;
       if (!buckets.has(key)) buckets.set(key, []);
@@ -47,9 +49,19 @@ export async function extractRows(file: File): Promise<PdfRow[]> {
     const keys = Array.from(buckets.keys()).sort((a, b) => b - a);
     for (const k of keys) {
       const line = buckets.get(k)!.sort((a, b) => a.x - b.x);
-      const tokens = line.map((i) => i.str.trim()).filter(Boolean);
+      // Merge adjacent items that are visually contiguous (gap < ~3px).
+      const merged: PdfItem[] = [];
+      for (const it of line) {
+        const last = merged[merged.length - 1];
+        if (last && it.x - (last.x + last.str.length * 3) < 3 && it.str.trim().length > 0 && !/\s/.test(it.str)) {
+          last.str += it.str;
+        } else {
+          merged.push({ ...it });
+        }
+      }
+      const tokens = merged.map((i) => i.str.trim()).filter(Boolean);
       if (tokens.length === 0) continue;
-      rows.push({ tokens, raw: tokens.join(" | ") });
+      rows.push({ tokens, items: merged, raw: tokens.join(" | ") });
     }
   }
   return rows;
