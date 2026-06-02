@@ -95,25 +95,37 @@ export type CompareResult = {
   m1: number;
   m2: number;
   m3: number;
+  headers: [string, string, string];
 };
+
+// Detects column headers like "01/2026", "Janeiro/2026", "Jan/2026", "01-2026".
+const HEADER_TOKEN =
+  /^(0?[1-9]|1[0-2])[\/\-.]\d{2,4}$|^(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez|janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)[\/\-. ]\d{2,4}$/i;
+
+export function findColumnHeaders(rows: PdfRow[]): [string, string, string] | null {
+  for (const row of rows) {
+    const matches = row.tokens.filter((t) => HEADER_TOKEN.test(t.trim()));
+    if (matches.length >= 3) {
+      return [matches[0], matches[1], matches[2]];
+    }
+  }
+  return null;
+}
 
 export function findClassificationRow(
   rows: PdfRow[],
   classification: string,
 ): CompareResult | null {
+  const headers = findColumnHeaders(rows) ?? ["Mês 1", "Mês 2", "Mês 3"];
   for (const row of rows) {
     const idx = row.tokens.findIndex((t) => t === classification);
     if (idx === -1) continue;
-    // collect trailing numeric tokens
     const nums: string[] = [];
     for (const t of row.tokens) {
       if (isNumberToken(t)) nums.push(t);
     }
     if (nums.length < 3) continue;
-    // First three numeric columns are Mês 1, Mês 2, Mês 3
-    // (last one is Saldo Acumulado).
     const [a, b, c] = nums;
-    // Description: tokens between classification and first numeric token
     const firstNumIdx = row.tokens.findIndex((t) => isNumberToken(t));
     const desc = row.tokens
       .slice(idx + 1, firstNumIdx === -1 ? row.tokens.length : firstNumIdx)
@@ -124,6 +136,7 @@ export function findClassificationRow(
       m1: parseBrlNumber(a),
       m2: parseBrlNumber(b),
       m3: parseBrlNumber(c),
+      headers,
     };
   }
   return null;
