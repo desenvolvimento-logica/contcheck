@@ -41,15 +41,22 @@ export async function extractRows(file: File): Promise<PdfRow[]> {
       const w = typeof it.width === "number" && it.width > 0 ? it.width : it.str.length * 5;
       items.push({ str: it.str, x: it.transform[4], y: it.transform[5], width: w });
     }
-    const buckets = new Map<number, PdfItem[]>();
-    for (const it of items) {
-      const key = Math.round(it.y / 2) * 2;
-      if (!buckets.has(key)) buckets.set(key, []);
-      buckets.get(key)!.push(it);
+    // Cluster items into rows by Y proximity (tolerance ~2.5pt). Within a row,
+    // items can sit on slightly different baselines (e.g. numbers vs. text),
+    // so a fixed-size bucket is unreliable.
+    const sorted = [...items].sort((a, b) => b.y - a.y);
+    const lines: PdfItem[][] = [];
+    const Y_TOL = 2.5;
+    for (const it of sorted) {
+      const last = lines[lines.length - 1];
+      if (last && Math.abs(last[0].y - it.y) <= Y_TOL) {
+        last.push(it);
+      } else {
+        lines.push([it]);
+      }
     }
-    const keys = Array.from(buckets.keys()).sort((a, b) => b - a);
-    for (const k of keys) {
-      const line = buckets.get(k)!.sort((a, b) => a.x - b.x);
+    for (const lineRaw of lines) {
+      const line = lineRaw.sort((a, b) => a.x - b.x);
       // Merge fragments that are visually contiguous (using real widths from pdf.js).
       const merged: PdfItem[] = [];
       for (const it of line) {
