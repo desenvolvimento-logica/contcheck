@@ -158,7 +158,9 @@ export function findClassificationRow(
   const headers: [string, string, string] = header?.labels ?? ["Mês 1", "Mês 2", "Mês 3"];
 
   for (const row of rows) {
-    const classItem = row.items.find((it) => it.str.trim() === classification);
+    const classItem = row.items.find((it) =>
+      it.str.trim().split(/\s+/).includes(classification),
+    );
     if (!classItem) continue;
 
     const numberItems = row.items.filter((it) => isNumberToken(it.str.trim()));
