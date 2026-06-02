@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, Loader2, ArrowLeft } from "lucide-react";
 import { UploadArea } from "./UploadArea";
 import {
