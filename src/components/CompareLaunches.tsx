@@ -31,12 +31,21 @@ export function CompareLaunches({ onBack }: Props) {
   const [state, setState] = useState<State>({ kind: "idle" });
 
   function analyze(parsedRows: PdfRow[], cls: string) {
-    const result = findClassificationRow(parsedRows, cls.trim());
+    let result;
+    try {
+      result = findClassificationRow(parsedRows, cls.trim());
+    } catch (e) {
+      setState({
+        kind: "error",
+        message: e instanceof Error ? e.message : "Erro ao analisar o PDF.",
+      });
+      return;
+    }
     if (!result) {
       setState({
         kind: "error",
         message:
-          "Não foi possível identificar a estrutura esperada no PDF. Verifique se o arquivo corresponde ao tipo de análise selecionado e se a classificação informada existe no relatório.",
+          "Não foi possível identificar a estrutura esperada no PDF. Verifique se o arquivo corresponde ao tipo de análise selecionado.",
       });
       return;
     }

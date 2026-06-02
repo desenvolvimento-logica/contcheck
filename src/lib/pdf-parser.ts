@@ -271,7 +271,7 @@ export function findClassificationRow(
     `[pdf-parser] Classificação "${classification}" não encontrada. ${candidateRows.length} candidatas rejeitadas:`,
     candidateRows,
   );
-  return null;
+  throw new Error("Classificação não encontrada");
 }
 
 export type Variation = {
