@@ -5,6 +5,7 @@ import { CompareLaunches } from "@/components/CompareLaunches";
 import { InvertedBalance } from "@/components/InvertedBalance";
 
 export const Route = createFileRoute("/")({
+  ssr: false,
   head: () => ({
     meta: [
       { title: "Análise de Relatórios Contábeis — Domínio" },
