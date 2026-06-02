@@ -336,10 +336,25 @@ export function extractAllFifthLevelRows(
   const seen = new Set<string>();
 
   for (const row of rows) {
-    const classItem = row.items.find((it) => isFifthLevelClassification(it.str.trim()));
-    if (!classItem) continue;
-    const classification = classItem.str.trim();
+    let classification: string | null = null;
+    let classItem: PdfItem | null = null;
+    for (const it of row.items) {
+      const s = it.str.trim();
+      if (isFifthLevelClassification(s)) {
+        classification = s;
+        classItem = it;
+        break;
+      }
+      const match = s.split(/\s+/).find((p) => isFifthLevelClassification(p));
+      if (match) {
+        classification = match;
+        classItem = it;
+        break;
+      }
+    }
+    if (!classItem || !classification) continue;
     if (seen.has(classification)) continue;
+
 
     const numberItems = row.items.filter((it) => isNumberToken(it.str.trim()));
     if (numberItems.length < nCols) continue;
