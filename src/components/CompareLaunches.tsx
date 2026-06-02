@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { AlertTriangle, CheckCircle2, Loader2, ArrowLeft } from "lucide-react";
+import { useMemo, useState } from "react";
+import { AlertTriangle, CheckCircle2, Loader2, ArrowLeft, RefreshCw } from "lucide-react";
 import { UploadArea } from "./UploadArea";
 import {
   compareVariation,
@@ -7,6 +7,7 @@ import {
   findClassificationRow,
   formatBRL,
   type CompareResult,
+  type PdfRow,
   type Variation,
 } from "@/lib/pdf-parser";
 
@@ -19,31 +20,45 @@ type State =
   | {
       kind: "done";
       result: CompareResult;
-      v1: Variation;
-      v2: Variation;
+      variations: Variation[];
+      classification: string;
     };
 
 export function CompareLaunches({ onBack }: Props) {
   const [file, setFile] = useState<File | null>(null);
+  const [rows, setRows] = useState<PdfRow[] | null>(null);
   const [classification, setClassification] = useState("3.1.1.02.002");
   const [state, setState] = useState<State>({ kind: "idle" });
+
+  function analyze(parsedRows: PdfRow[], cls: string) {
+    const result = findClassificationRow(parsedRows, cls.trim());
+    if (!result) {
+      setState({
+        kind: "error",
+        message:
+          "Não foi possível identificar a estrutura esperada no PDF. Verifique se o arquivo corresponde ao tipo de análise selecionado e se a classificação informada existe no relatório.",
+      });
+      return;
+    }
+    const variations: Variation[] = [];
+    for (let i = 1; i < result.values.length; i++) {
+      variations.push(
+        compareVariation(
+          `${result.headers[i - 1]} → ${result.headers[i]}`,
+          result.values[i - 1],
+          result.values[i],
+        ),
+      );
+    }
+    setState({ kind: "done", result, variations, classification: cls.trim() });
+  }
 
   async function process(f: File) {
     setState({ kind: "processing" });
     try {
-      const rows = await extractRows(f);
-      const result = findClassificationRow(rows, classification.trim());
-      if (!result) {
-        setState({
-          kind: "error",
-          message:
-            "Não foi possível identificar a estrutura esperada no PDF. Verifique se o arquivo corresponde ao tipo de análise selecionado e se a classificação informada existe no relatório.",
-        });
-        return;
-      }
-      const v1 = compareVariation(`${result.headers[0]} → ${result.headers[1]}`, result.m1, result.m2);
-      const v2 = compareVariation(`${result.headers[1]} → ${result.headers[2]}`, result.m2, result.m3);
-      setState({ kind: "done", result, v1, v2 });
+      const parsedRows = await extractRows(f);
+      setRows(parsedRows);
+      analyze(parsedRows, classification);
     } catch (e) {
       setState({
         kind: "error",
@@ -59,8 +74,25 @@ export function CompareLaunches({ onBack }: Props) {
 
   function clear() {
     setFile(null);
+    setRows(null);
     setState({ kind: "idle" });
   }
+
+  function recalculate() {
+    if (!rows) return;
+    analyze(rows, classification);
+  }
+
+  const lastAnalyzedClassification =
+    state.kind === "done" ? state.classification : null;
+  const canRecalculate = useMemo(() => {
+    if (!rows) return false;
+    if (!classification.trim()) return false;
+    if (state.kind === "processing") return false;
+    if (state.kind === "done") return state.classification !== classification.trim();
+    // error after a successful parse → allow recalculating with new classification
+    return state.kind === "error";
+  }, [rows, classification, state]);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -82,8 +114,9 @@ export function CompareLaunches({ onBack }: Props) {
           Comparar Lançamentos Contábeis
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Identifica variações superiores a 30% entre Mês 1, Mês 2 e Mês 3 para a
-          classificação informada.
+          Identifica variações superiores a 30% entre meses consecutivos para a
+          classificação informada. A coluna "Saldo Acumulado", quando presente, é
+          ignorada.
         </p>
       </div>
 
@@ -98,10 +131,22 @@ export function CompareLaunches({ onBack }: Props) {
           placeholder="3.1.1.02.002"
           className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-ring/40"
         />
-        <p className="mt-2 text-xs text-muted-foreground">
-          Padrão: 3.1.1.02.002 — você pode alterar antes ou depois do upload e
-          reenviar o arquivo.
-        </p>
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">
+            {lastAnalyzedClassification && lastAnalyzedClassification !== classification.trim()
+              ? `Última análise: ${lastAnalyzedClassification}. Clique em Recalcular para usar a nova classificação.`
+              : "Padrão: 3.1.1.02.002 — você pode alterar e recalcular sem reenviar o arquivo."}
+          </p>
+          <button
+            type="button"
+            onClick={recalculate}
+            disabled={!canRecalculate}
+            className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Recalcular
+          </button>
+        </div>
       </div>
 
       <UploadArea
@@ -118,12 +163,10 @@ export function CompareLaunches({ onBack }: Props) {
         </div>
       )}
 
-      {state.kind === "error" && (
-        <ErrorCard message={state.message} />
-      )}
+      {state.kind === "error" && <ErrorCard message={state.message} />}
 
       {state.kind === "done" && (
-        <ResultView result={state.result} v1={state.v1} v2={state.v2} />
+        <ResultView result={state.result} variations={state.variations} />
       )}
     </div>
   );
@@ -131,25 +174,23 @@ export function CompareLaunches({ onBack }: Props) {
 
 function ResultView({
   result,
-  v1,
-  v2,
+  variations,
 }: {
   result: CompareResult;
-  v1: Variation;
-  v2: Variation;
+  variations: Variation[];
 }) {
-  const anyDiv = v1.divergent || v2.divergent;
+  const anyDiv = variations.some((v) => v.divergent);
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           Resumo da análise
         </h2>
-        <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           <Stat label="Classificação" value={result.classification} mono />
-          <Stat label={result.headers[0]} value={formatBRL(result.m1)} />
-          <Stat label={result.headers[1]} value={formatBRL(result.m2)} />
-          <Stat label={result.headers[2]} value={formatBRL(result.m3)} />
+          {result.headers.map((h, i) => (
+            <Stat key={h + i} label={h} value={formatBRL(result.values[i])} />
+          ))}
         </dl>
         {result.description && (
           <p className="mt-4 text-xs text-muted-foreground">
@@ -158,10 +199,11 @@ function ResultView({
         )}
       </div>
 
-      <VariationCard v={v1} />
-      <VariationCard v={v2} />
+      {variations.map((v, i) => (
+        <VariationCard key={i} v={v} />
+      ))}
 
-      {!anyDiv && (
+      {!anyDiv && variations.length > 0 && (
         <div className="flex items-start gap-3 rounded-lg border border-border bg-card p-5 shadow-sm">
           <CheckCircle2 className="mt-0.5 h-5 w-5 text-success" />
           <p className="text-sm text-foreground">

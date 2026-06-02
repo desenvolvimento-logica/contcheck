@@ -114,10 +114,10 @@ export function isClassification(t: string): boolean {
 export type CompareResult = {
   classification: string;
   description: string;
-  m1: number;
-  m2: number;
-  m3: number;
-  headers: [string, string, string];
+  /** Values for each month column, in left-to-right order. */
+  values: number[];
+  /** Header labels for each month column, in left-to-right order. */
+  headers: string[];
 };
 
 // Detects column headers like "01/2026", "Janeiro/2026", "Jan/2026", "01-2026".
@@ -125,24 +125,32 @@ const HEADER_TOKEN =
   /^(0?[1-9]|1[0-2])[\/\-.]\d{2,4}$|^(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez|janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)[\/\-. ]\d{2,4}$/i;
 
 export type HeaderInfo = {
-  labels: [string, string, string];
-  /** Left-edge x of each of the 3 month headers. */
-  xs: [number, number, number];
-  /** Right boundary x for column 3 (taken from the next header like "Saldo", or synthetic). */
+  labels: string[];
+  /** Left-edge x of each month header. */
+  xs: number[];
+  /** Right boundary x for the last month column (taken from the next non-month item like "Saldo Acumulado", or synthetic). */
   rightBoundary: number;
 };
 
 export function findColumnHeaders(rows: PdfRow[]): HeaderInfo | null {
   for (const row of rows) {
     const matches = row.items.filter((it) => HEADER_TOKEN.test(it.str.trim()));
-    if (matches.length >= 3) {
-      const picked = matches.slice(0, 3);
-      // Find the first non-date item after the 3rd month header — that's the right boundary.
-      const after = row.items.find((it) => it.x > picked[2].x + 5 && !HEADER_TOKEN.test(it.str.trim()));
-      const rightBoundary = after ? after.x : picked[2].x + (picked[2].x - picked[1].x);
+    if (matches.length >= 2) {
+      const picked = matches;
+      const last = picked[picked.length - 1];
+      // The first non-date item after the last month header (e.g. "Saldo Acumulado")
+      // is the right boundary; values to its right are ignored.
+      const after = row.items.find(
+        (it) => it.x > last.x + 5 && !HEADER_TOKEN.test(it.str.trim()),
+      );
+      const avgGap =
+        picked.length > 1
+          ? (last.x - picked[0].x) / (picked.length - 1)
+          : 50;
+      const rightBoundary = after ? after.x : last.x + avgGap;
       return {
-        labels: [picked[0].str.trim(), picked[1].str.trim(), picked[2].str.trim()],
-        xs: [picked[0].x, picked[1].x, picked[2].x],
+        labels: picked.map((p) => p.str.trim()),
+        xs: picked.map((p) => p.x),
         rightBoundary,
       };
     }
@@ -155,7 +163,9 @@ export function findClassificationRow(
   classification: string,
 ): CompareResult | null {
   const header = findColumnHeaders(rows);
-  const headers: [string, string, string] = header?.labels ?? ["Mês 1", "Mês 2", "Mês 3"];
+  if (!header) return null;
+  const headers = header.labels;
+  const nCols = headers.length;
 
   for (const row of rows) {
     const classItem = row.items.find((it) =>
@@ -164,36 +174,27 @@ export function findClassificationRow(
     if (!classItem) continue;
 
     const numberItems = row.items.filter((it) => isNumberToken(it.str.trim()));
-    if (numberItems.length < 3) continue;
+    if (numberItems.length < nCols) continue;
 
-    // Domínio right-aligns numbers within each column. Use right edge (x + width)
-    // and assign each number to the column whose [left, nextLeft) range it falls in.
-    // A number "belongs to" column i when its right edge is within ~5pt before the
-    // next column's left edge (i.e., right_edge < boundary[i+1] - margin).
-    let picked: (PdfItem | null)[];
-    if (header) {
-      const boundaries = [header.xs[0], header.xs[1], header.xs[2], header.rightBoundary];
-      const MARGIN = 5; // small gap before the next column header
-      picked = [null, null, null];
-      for (const n of numberItems) {
-        const rightEdge = n.x + n.width;
-        for (let i = 0; i < 3; i++) {
-          if (rightEdge > boundaries[i] - 30 && rightEdge <= boundaries[i + 1] - MARGIN + 2) {
-            // Keep the rightmost candidate per column (in case of fragments).
-            if (!picked[i] || rightEdge > picked[i]!.x + picked[i]!.width) {
-              picked[i] = n;
-            }
-            break;
+    // Assign each number to a month column by right-edge alignment.
+    // Numbers past the last month column (Saldo Acumulado, etc.) are ignored.
+    const boundaries = [...header.xs, header.rightBoundary];
+    const MARGIN = 5;
+    const picked: (PdfItem | null)[] = new Array(nCols).fill(null);
+    for (const n of numberItems) {
+      const rightEdge = n.x + n.width;
+      for (let i = 0; i < nCols; i++) {
+        if (rightEdge > boundaries[i] - 30 && rightEdge <= boundaries[i + 1] - MARGIN + 2) {
+          if (!picked[i] || rightEdge > picked[i]!.x + picked[i]!.width) {
+            picked[i] = n;
           }
+          break;
         }
       }
-    } else {
-      picked = numberItems.slice(0, 3);
     }
 
-    if (!picked[0] || !picked[1] || !picked[2]) continue;
+    if (picked.some((p) => !p)) continue;
 
-    // Description = tokens between classification and the first numeric item.
     const firstNumX = Math.min(...numberItems.map((n) => n.x));
     const desc = row.items
       .filter((it) => it.x > classItem.x + classItem.width - 0.1 && it.x < firstNumX)
@@ -206,9 +207,7 @@ export function findClassificationRow(
     return {
       classification,
       description: desc,
-      m1: parseBrlNumber(picked[0]!.str),
-      m2: parseBrlNumber(picked[1]!.str),
-      m3: parseBrlNumber(picked[2]!.str),
+      values: picked.map((p) => parseBrlNumber(p!.str)),
       headers,
     };
   }
