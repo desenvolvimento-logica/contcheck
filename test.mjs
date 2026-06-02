@@ -1,10 +1,13 @@
 import { readFileSync } from 'fs';
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 
+console.log('start');
 const data = new Uint8Array(readFileSync('/tmp/t.pdf'));
 const doc = await pdfjs.getDocument({ data }).promise;
+console.log('pages', doc.numPages);
 const page = await doc.getPage(1);
 const content = await page.getTextContent();
+console.log('items', content.items.length);
 
 const items = [];
 for (const it of content.items) {
@@ -12,6 +15,8 @@ for (const it of content.items) {
   const w = typeof it.width === 'number' && it.width > 0 ? it.width : it.str.length*5;
   items.push({ str: it.str, x: it.transform[4], y: it.transform[5], width: w });
 }
+console.log('non-empty', items.length);
+
 const buckets = new Map();
 for (const it of items) {
   const k = Math.round(it.y/2)*2;
@@ -33,11 +38,11 @@ for (const k of keys) {
   }
   rows.push({items: merged});
 }
+console.log('rows', rows.length);
 
 const HEADER = /^(0?[1-9]|1[0-2])[\/\-.]\d{2,4}$/i;
 const NUM = /^-?\d{1,3}(\.\d{3})*,\d{2}[DC]?$|^-?\d+,\d{2}[DC]?$/i;
 
-// find headers
 let header;
 for (const r of rows) {
   const m = r.items.filter(it => HEADER.test(it.str.trim()));
@@ -45,17 +50,17 @@ for (const r of rows) {
     const picked = m.slice(0,3);
     const after = r.items.find(it => it.x > picked[2].x+5 && !HEADER.test(it.str.trim()));
     header = { labels: picked.map(p=>p.str.trim()), xs: picked.map(p=>p.x), rightBoundary: after?after.x:picked[2].x+(picked[2].x-picked[1].x) };
-    console.log('HEADER:', header);
+    console.log('HEADER:', JSON.stringify(header));
     break;
   }
 }
+if (!header) { console.log('NO HEADER'); process.exit(0); }
 
-// find row with classification 3.1.1.02.002
 const target = '3.1.1.02.002';
 for (const r of rows) {
   const ci = r.items.find(it => it.str.trim() === target);
   if (!ci) continue;
-  console.log('\nROW items:');
+  console.log('\nROW items for', target);
   for (const it of r.items) console.log(`  x=${it.x.toFixed(1)} w=${it.width.toFixed(1)} end=${(it.x+it.width).toFixed(1)} str=${JSON.stringify(it.str)}`);
   
   const nums = r.items.filter(it => NUM.test(it.str.trim()));
