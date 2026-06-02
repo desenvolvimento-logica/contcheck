@@ -120,40 +120,68 @@ export type CompareResult = {
   headers: string[];
 };
 
-// Detects column headers like "01/2026", "Janeiro/2026", "Jan/2026", "01-2026".
-const HEADER_TOKEN =
-  /^(0?[1-9]|1[0-2])[\/\-.]\d{2,4}$|^(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez|janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)[\/\-. ]\d{2,4}$/i;
-
 export type HeaderInfo = {
   labels: string[];
-  /** Left-edge x of each month header. */
+  /** Left-edge x of each data column header. */
   xs: number[];
-  /** Right boundary x for the last month column (taken from the next non-month item like "Saldo Acumulado", or synthetic). */
+  /** Right boundary x for the last data column (taken from "Saldo Acumulado" if present, or synthetic). */
   rightBoundary: number;
 };
 
+const DESC_TOKEN = /^descri[cç][aã]o$/i;
+const SALDO_TOKEN = /^saldo$/i;
+
+/**
+ * Locates the header row by finding "Descrição" and takes ALL columns to its
+ * right as data columns, in left-to-right order. If a "Saldo Acumulado"
+ * column exists, it is used as the right boundary and excluded from data columns.
+ */
 export function findColumnHeaders(rows: PdfRow[]): HeaderInfo | null {
   for (const row of rows) {
-    const matches = row.items.filter((it) => HEADER_TOKEN.test(it.str.trim()));
-    if (matches.length >= 2) {
-      const picked = matches;
-      const last = picked[picked.length - 1];
-      // The first non-date item after the last month header (e.g. "Saldo Acumulado")
-      // is the right boundary; values to its right are ignored.
-      const after = row.items.find(
-        (it) => it.x > last.x + 5 && !HEADER_TOKEN.test(it.str.trim()),
-      );
-      const avgGap =
-        picked.length > 1
-          ? (last.x - picked[0].x) / (picked.length - 1)
-          : 50;
-      const rightBoundary = after ? after.x : last.x + avgGap;
-      return {
-        labels: picked.map((p) => p.str.trim()),
-        xs: picked.map((p) => p.x),
-        rightBoundary,
-      };
+    const descItem = row.items.find((it) => DESC_TOKEN.test(it.str.trim()));
+    if (!descItem) continue;
+    const after = row.items
+      .filter((it) => it.x > descItem.x + descItem.width - 0.1)
+      .sort((a, b) => a.x - b.x);
+    if (after.length === 0) continue;
+
+    // Identify "Saldo Acumulado" boundary if present.
+    const saldoIdx = after.findIndex(
+      (it) => SALDO_TOKEN.test(it.str.trim()) || /saldo\s+acumulado/i.test(it.str.trim()),
+    );
+    const dataItems = saldoIdx === -1 ? after : after.slice(0, saldoIdx);
+    if (dataItems.length === 0) continue;
+
+    // Merge fragments belonging to the same header label (e.g. "Janeiro" + "/2026").
+    const merged: PdfItem[] = [];
+    for (const it of dataItems) {
+      const last = merged[merged.length - 1];
+      const gap = last ? it.x - (last.x + last.width) : Infinity;
+      if (last && gap < 8) {
+        last.str = (last.str + (gap > 1 ? " " : "") + it.str).trim();
+        last.width = it.x + it.width - last.x;
+      } else {
+        merged.push({ ...it });
+      }
     }
+    if (merged.length === 0) continue;
+
+    const lastCol = merged[merged.length - 1];
+    let rightBoundary: number;
+    if (saldoIdx !== -1) {
+      rightBoundary = after[saldoIdx].x;
+    } else if (merged.length > 1) {
+      const gap = merged[merged.length - 1].x - merged[merged.length - 2].x;
+      rightBoundary = lastCol.x + gap;
+    } else {
+      rightBoundary = lastCol.x + lastCol.width + 80;
+    }
+
+    return {
+      labels: merged.map((m) => m.str.trim()),
+      xs: merged.map((m) => m.x),
+      rightBoundary,
+    };
   }
   return null;
 }
