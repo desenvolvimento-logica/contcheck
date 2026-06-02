@@ -104,7 +104,7 @@ export function isNumberToken(t: string): boolean {
 }
 
 const CLASSIFICATION = /^\d+(\.\d+){2,}$/;
-const FIFTH_LEVEL = /^\d+\.\d+\.\d+\.\d+\.\d+$/;
+const FIFTH_LEVEL = /^\d\.\d\.\d\.\d{2}\.\d{3}$/;
 
 export function isClassification(t: string): boolean {
   return CLASSIFICATION.test(t);
