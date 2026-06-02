@@ -147,9 +147,9 @@ function ResultView({
         </h2>
         <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <Stat label="Classificação" value={result.classification} mono />
-          <Stat label="Mês 1" value={formatBRL(result.m1)} />
-          <Stat label="Mês 2" value={formatBRL(result.m2)} />
-          <Stat label="Mês 3" value={formatBRL(result.m3)} />
+          <Stat label={result.headers[0]} value={formatBRL(result.m1)} />
+          <Stat label={result.headers[1]} value={formatBRL(result.m2)} />
+          <Stat label={result.headers[2]} value={formatBRL(result.m3)} />
         </dl>
         {result.description && (
           <p className="mt-4 text-xs text-muted-foreground">
