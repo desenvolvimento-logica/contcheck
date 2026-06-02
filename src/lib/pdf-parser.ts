@@ -11,9 +11,7 @@ async function getPdfjs() {
   if (!pdfjsPromise) {
     pdfjsPromise = (async () => {
       const pdfjs = await import("pdfjs-dist");
-      // Use a CDN worker matching the installed version to avoid bundler config.
-      // @ts-expect-error - version exists at runtime
-      const version = pdfjs.version as string;
+      const version = (pdfjs as unknown as { version: string }).version;
       pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
       return pdfjs;
     })();
