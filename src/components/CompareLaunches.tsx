@@ -1,73 +1,48 @@
-import { useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, Loader2, ArrowLeft, RefreshCw } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangle, CheckCircle2, Loader2, ArrowLeft } from "lucide-react";
 import { UploadArea } from "./UploadArea";
 import {
-  compareVariation,
+  extractAllFifthLevelRows,
   extractRows,
-  findClassificationRow,
   formatBRL,
-  type CompareResult,
-  type PdfRow,
-  type Variation,
+  type AllClassificationsResult,
 } from "@/lib/pdf-parser";
 
 type Props = { onBack: () => void };
+
+const THRESHOLD = 30;
 
 type State =
   | { kind: "idle" }
   | { kind: "processing" }
   | { kind: "error"; message: string }
-  | {
-      kind: "done";
-      result: CompareResult;
-      variations: Variation[];
-      classification: string;
-    };
+  | { kind: "done"; result: AllClassificationsResult };
 
 export function CompareLaunches({ onBack }: Props) {
   const [file, setFile] = useState<File | null>(null);
-  const [rows, setRows] = useState<PdfRow[] | null>(null);
-  const [classification, setClassification] = useState("3.1.1.02.002");
   const [state, setState] = useState<State>({ kind: "idle" });
-
-  function analyze(parsedRows: PdfRow[], cls: string) {
-    let result;
-    try {
-      result = findClassificationRow(parsedRows, cls.trim());
-    } catch (e) {
-      setState({
-        kind: "error",
-        message: e instanceof Error ? e.message : "Erro ao analisar o PDF.",
-      });
-      return;
-    }
-    if (!result) {
-      setState({
-        kind: "error",
-        message:
-          "Não foi possível identificar a estrutura esperada no PDF. Verifique se o arquivo corresponde ao tipo de análise selecionado.",
-      });
-      return;
-    }
-    const variations: Variation[] = [];
-    for (let i = 1; i < result.values.length; i++) {
-      variations.push(
-        compareVariation(
-          `${result.headers[i - 1]} → ${result.headers[i]}`,
-          result.values[i - 1],
-          result.values[i],
-        ),
-      );
-    }
-    setState({ kind: "done", result, variations, classification: cls.trim() });
-  }
 
   async function process(f: File) {
     setState({ kind: "processing" });
     try {
       const parsedRows = await extractRows(f);
-      setRows(parsedRows);
-      analyze(parsedRows, classification);
+      const result = extractAllFifthLevelRows(parsedRows);
+      if (!result) {
+        setState({
+          kind: "error",
+          message:
+            "Não foi possível identificar a estrutura esperada no PDF. Verifique se o arquivo corresponde ao tipo de análise selecionado.",
+        });
+        return;
+      }
+      if (result.rows.length === 0) {
+        setState({
+          kind: "error",
+          message: "Nenhuma classificação de 5º nível (x.x.x.xx.xxx) foi encontrada no relatório.",
+        });
+        return;
+      }
+      setState({ kind: "done", result });
     } catch (e) {
       setState({
         kind: "error",
@@ -83,28 +58,11 @@ export function CompareLaunches({ onBack }: Props) {
 
   function clear() {
     setFile(null);
-    setRows(null);
     setState({ kind: "idle" });
   }
 
-  function recalculate() {
-    if (!rows) return;
-    analyze(rows, classification);
-  }
-
-  const lastAnalyzedClassification =
-    state.kind === "done" ? state.classification : null;
-  const canRecalculate = useMemo(() => {
-    if (!rows) return false;
-    if (!classification.trim()) return false;
-    if (state.kind === "processing") return false;
-    if (state.kind === "done") return state.classification !== classification.trim();
-    // error after a successful parse → allow recalculating with new classification
-    return state.kind === "error";
-  }, [rows, classification, state]);
-
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-center justify-between">
         <button
           onClick={onBack}
@@ -123,39 +81,10 @@ export function CompareLaunches({ onBack }: Props) {
           Comparar Lançamentos Contábeis
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Identifica variações superiores a 30% entre meses consecutivos para a
-          classificação informada. A coluna "Saldo Acumulado", quando presente, é
-          ignorada.
+          Analisa todas as classificações de 5º nível (x.x.x.xx.xxx) do relatório
+          e destaca variações superiores a {THRESHOLD}% em relação ao mês anterior.
+          A coluna "Saldo Acumulado", quando presente, é ignorada.
         </p>
-      </div>
-
-      <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
-        <label className="block text-sm font-medium text-foreground">
-          Classificação
-        </label>
-        <input
-          type="text"
-          value={classification}
-          onChange={(e) => setClassification(e.target.value)}
-          placeholder="3.1.1.02.002"
-          className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-ring/40"
-        />
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="text-xs text-muted-foreground">
-            {lastAnalyzedClassification && lastAnalyzedClassification !== classification.trim()
-              ? `Última análise: ${lastAnalyzedClassification}. Clique em Recalcular para usar a nova classificação.`
-              : "Padrão: 3.1.1.02.002 — você pode alterar e recalcular sem reenviar o arquivo."}
-          </p>
-          <button
-            type="button"
-            onClick={recalculate}
-            disabled={!canRecalculate}
-            className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            Recalcular
-          </button>
-        </div>
       </div>
 
       <UploadArea
@@ -174,110 +103,115 @@ export function CompareLaunches({ onBack }: Props) {
 
       {state.kind === "error" && <ErrorCard message={state.message} />}
 
-      {state.kind === "done" && (
-        <ResultView result={state.result} variations={state.variations} />
-      )}
+      {state.kind === "done" && <ResultTable result={state.result} />}
     </div>
   );
 }
 
-function ResultView({
-  result,
-  variations,
-}: {
-  result: CompareResult;
-  variations: Variation[];
-}) {
-  const anyDiv = variations.some((v) => v.divergent);
+function formatPct(p: number | null): string {
+  if (p === null) return "—";
+  if (!Number.isFinite(p)) return "∞";
+  return `${p >= 0 ? "+" : ""}${p.toFixed(2)}%`;
+}
+
+function ResultTable({ result }: { result: AllClassificationsResult }) {
+  const divergentCount = result.rows.filter((r) => r.hasDivergence).length;
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          Resumo da análise
-        </h2>
-        <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          <Stat label="Classificação" value={result.classification} mono />
-          {result.headers.map((h, i) => (
-            <Stat key={h + i} label={h} value={formatBRL(result.values[i])} />
-          ))}
-        </dl>
-        {result.description && (
-          <p className="mt-4 text-xs text-muted-foreground">
-            Descrição: {result.description}
-          </p>
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
+        {divergentCount > 0 ? (
+          <>
+            <AlertTriangle className="h-5 w-5 text-warning-foreground" />
+            <p className="text-sm text-foreground">
+              <span className="font-semibold">{divergentCount}</span> de{" "}
+              <span className="font-semibold">{result.rows.length}</span> classificações
+              apresentaram variação superior a {THRESHOLD}% em relação ao mês anterior.
+            </p>
+          </>
+        ) : (
+          <>
+            <CheckCircle2 className="h-5 w-5 text-success" />
+            <p className="text-sm text-foreground">
+              Nenhuma variação acima de {THRESHOLD}% entre meses para as{" "}
+              {result.rows.length} classificações analisadas.
+            </p>
+          </>
         )}
       </div>
 
-      {variations.map((v, i) => (
-        <VariationCard key={i} v={v} />
-      ))}
-
-      {!anyDiv && variations.length > 0 && (
-        <div className="flex items-start gap-3 rounded-lg border border-border bg-card p-5 shadow-sm">
-          <CheckCircle2 className="mt-0.5 h-5 w-5 text-success" />
-          <p className="text-sm text-foreground">
-            Nenhuma divergência superior a 30% foi encontrada para a classificação
-            analisada.
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function VariationCard({ v }: { v: Variation }) {
-  const pct = Number.isFinite(v.percent)
-    ? `${v.percent >= 0 ? "+" : ""}${v.percent.toFixed(2)}%`
-    : "—";
-  if (v.divergent) {
-    return (
-      <div className="rounded-lg border-l-4 border-warning bg-card p-5 shadow-sm">
-        <div className="flex items-start gap-3">
-          <AlertTriangle className="mt-0.5 h-5 w-5 text-warning-foreground" />
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-foreground">
-              Atenção: variação de {pct} em {v.label}.
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Diferença encontrada: {formatBRL(v.diff)}.
-            </p>
-            <p className="mt-2 text-xs text-muted-foreground">
-              {formatBRL(v.previous)} → {formatBRL(v.current)}
-            </p>
-          </div>
-        </div>
+      <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
+        <table className="w-full min-w-[720px] text-sm">
+          <thead className="bg-muted/40">
+            <tr className="border-b border-border">
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Classificação
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Descrição
+              </th>
+              {result.headers.map((h) => (
+                <th
+                  key={h}
+                  className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                >
+                  {h}
+                </th>
+              ))}
+              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Média de Variação
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {result.rows.map((r) => (
+              <tr key={r.classification} className="border-b border-border last:border-0">
+                <td className="px-4 py-3 font-mono text-xs text-foreground">
+                  {r.classification}
+                </td>
+                <td className="px-4 py-3 text-xs text-muted-foreground">
+                  {r.description || "—"}
+                </td>
+                {r.values.map((v, i) => {
+                  const pct = r.variations[i];
+                  const divergent =
+                    pct !== null && Number.isFinite(pct) && Math.abs(pct) > THRESHOLD;
+                  return (
+                    <td
+                      key={i}
+                      className={`px-4 py-3 text-right tabular-nums ${
+                        divergent
+                          ? "bg-warning/20 text-warning-foreground font-semibold"
+                          : "text-foreground"
+                      }`}
+                      title={pct !== null ? `Variação: ${formatPct(pct)}` : undefined}
+                    >
+                      <div>{formatBRL(v)}</div>
+                      {pct !== null && (
+                        <div
+                          className={`text-[10px] ${
+                            divergent ? "text-warning-foreground" : "text-muted-foreground"
+                          }`}
+                        >
+                          {formatPct(pct)}
+                        </div>
+                      )}
+                    </td>
+                  );
+                })}
+                <td
+                  className={`px-4 py-3 text-right tabular-nums ${
+                    r.hasDivergence
+                      ? "text-warning-foreground font-semibold"
+                      : "text-foreground"
+                  }`}
+                >
+                  {r.avgVariation.toFixed(2)}%
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-    );
-  }
-  return (
-    <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
-      <div className="flex items-start gap-3">
-        <CheckCircle2 className="mt-0.5 h-5 w-5 text-success" />
-        <div>
-          <p className="text-sm font-medium text-foreground">
-            {v.label}: variação normal ({pct}).
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {formatBRL(v.previous)} → {formatBRL(v.current)} · diferença{" "}
-            {formatBRL(v.diff)}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Stat({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div>
-      <dt className="text-xs uppercase tracking-wider text-muted-foreground">
-        {label}
-      </dt>
-      <dd
-        className={`mt-1 text-sm font-semibold text-foreground ${mono ? "font-mono" : ""}`}
-      >
-        {value}
-      </dd>
     </div>
   );
 }
