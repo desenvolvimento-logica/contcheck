@@ -13,8 +13,8 @@ async function getPdfjs() {
   if (!pdfjsPromise) {
     pdfjsPromise = (async () => {
       const pdfjs = await import("pdfjs-dist");
-      const version = (pdfjs as unknown as { version: string }).version;
-      pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
+      const workerUrl = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
+      pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
       return pdfjs;
     })();
   }
