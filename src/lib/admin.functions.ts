@@ -72,3 +72,77 @@ export const listAllUsers = createServerFn({ method: "GET" })
       .map((p) => ({ ...p, role: rolesById.get(p.id) ?? "usuario" }))
       .sort((a, b) => a.nome.localeCompare(b.nome));
   });
+
+const updateSchema = z.object({
+  user_id: z.string().uuid(),
+  nome: z.string().min(1).max(120),
+  email: z.string().email().max(255),
+  perfil: z.enum(["usuario", "lider", "coordenador", "admin"]),
+});
+
+export const updateUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => updateSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    await ensureAdmin(context.supabase as never, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { error: aErr } = await supabaseAdmin.auth.admin.updateUserById(data.user_id, {
+      email: data.email,
+      email_confirm: true,
+    });
+    if (aErr) throw new Error(aErr.message);
+
+    const { error: pErr } = await supabaseAdmin
+      .from("profiles")
+      .update({ nome: data.nome, email: data.email })
+      .eq("id", data.user_id);
+    if (pErr) throw new Error(pErr.message);
+
+    const { data: existing, error: rSelErr } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", data.user_id)
+      .maybeSingle();
+    if (rSelErr) throw new Error(rSelErr.message);
+
+    if (!existing || existing.role !== data.perfil) {
+      const { error: rDelErr } = await supabaseAdmin
+        .from("user_roles")
+        .delete()
+        .eq("user_id", data.user_id);
+      if (rDelErr) throw new Error(rDelErr.message);
+      const { error: rInsErr } = await supabaseAdmin
+        .from("user_roles")
+        .insert({ user_id: data.user_id, role: data.perfil });
+      if (rInsErr) throw new Error(rInsErr.message);
+    }
+
+    return { ok: true };
+  });
+
+const resetSchema = z.object({
+  user_id: z.string().uuid(),
+  nova_senha: z.string().min(6).max(72),
+});
+
+export const resetUserPassword = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => resetSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    await ensureAdmin(context.supabase as never, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { error: aErr } = await supabaseAdmin.auth.admin.updateUserById(data.user_id, {
+      password: data.nova_senha,
+    });
+    if (aErr) throw new Error(aErr.message);
+
+    const { error: pErr } = await supabaseAdmin
+      .from("profiles")
+      .update({ must_change_password: true })
+      .eq("id", data.user_id);
+    if (pErr) throw new Error(pErr.message);
+
+    return { ok: true };
+  });

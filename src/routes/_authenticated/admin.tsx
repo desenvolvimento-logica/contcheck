@@ -3,13 +3,23 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import Papa from "papaparse";
-import { Loader2, Upload, FileText } from "lucide-react";
-import { bulkCreateUsers, listAllUsers } from "@/lib/admin.functions";
+import { Loader2, Upload, FileText, Pencil, KeyRound, X } from "lucide-react";
+import { bulkCreateUsers, listAllUsers, updateUser, resetUserPassword } from "@/lib/admin.functions";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminPage,
 });
+
+type UserRow = {
+  id: string;
+  nome: string;
+  email: string;
+  must_change_password: boolean;
+  role: string;
+};
+
 
 type CsvRow = { nome: string; email: string; perfil: string; senha_provisoria: string };
 
@@ -18,6 +28,8 @@ function AdminPage() {
   const { data: me, isLoading: meLoading } = useCurrentUser();
   const list = useServerFn(listAllUsers);
   const bulk = useServerFn(bulkCreateUsers);
+  const update = useServerFn(updateUser);
+  const resetPwd = useServerFn(resetUserPassword);
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [parsedRows, setParsedRows] = useState<CsvRow[]>([]);
@@ -25,6 +37,9 @@ function AdminPage() {
   const [lastResult, setLastResult] = useState<
     { email: string; status: "created" | "failed"; message?: string }[] | null
   >(null);
+  const [editing, setEditing] = useState<UserRow | null>(null);
+  const [resetting, setResetting] = useState<UserRow | null>(null);
+
 
   if (!meLoading && me && me.role !== "admin") {
     navigate({ to: "/" });
@@ -55,6 +70,30 @@ function AdminPage() {
       qc.invalidateQueries({ queryKey: ["admin", "users"] });
     },
   });
+
+  const updateMutation = useMutation({
+    mutationFn: (vars: { user_id: string; nome: string; email: string; perfil: "usuario" | "lider" | "coordenador" | "admin" }) =>
+      update({ data: vars }),
+    onSuccess: () => {
+      toast.success("Usuário atualizado.");
+      setEditing(null);
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : "Falha ao atualizar."),
+  });
+
+  const resetMutation = useMutation({
+    mutationFn: (vars: { user_id: string; nova_senha: string }) => resetPwd({ data: vars }),
+    onSuccess: () => {
+      toast.success("Senha redefinida. O usuário deverá alterá-la no próximo login.");
+      setResetting(null);
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : "Falha ao redefinir senha."),
+  });
+
+
+
 
   function handleFile(file: File) {
     setParseError(null);
@@ -204,6 +243,7 @@ function AdminPage() {
                 <th className="px-3 py-2 text-left">E-mail</th>
                 <th className="px-3 py-2 text-left">Perfil</th>
                 <th className="px-3 py-2 text-left">Senha pendente?</th>
+                <th className="px-3 py-2 text-right">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -221,12 +261,225 @@ function AdminPage() {
                       <span className="text-muted-foreground">não</span>
                     )}
                   </td>
+                  <td className="px-3 py-2 text-right">
+                    <div className="inline-flex items-center gap-2">
+                      <button
+                        onClick={() => setEditing(u as UserRow)}
+                        className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-2 py-1 text-xs hover:bg-muted"
+                      >
+                        <Pencil className="h-3.5 w-3.5" /> Editar
+                      </button>
+                      <button
+                        onClick={() => setResetting(u as UserRow)}
+                        className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-2 py-1 text-xs hover:bg-muted"
+                      >
+                        <KeyRound className="h-3.5 w-3.5" /> Redefinir senha
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </section>
+
+      {editing && (
+        <EditUserDialog
+          user={editing}
+          onClose={() => setEditing(null)}
+          onSubmit={(vars) => updateMutation.mutate(vars)}
+          pending={updateMutation.isPending}
+        />
+      )}
+
+      {resetting && (
+        <ResetPasswordDialog
+          user={resetting}
+          onClose={() => setResetting(null)}
+          onSubmit={(senha) => resetMutation.mutate({ user_id: resetting.id, nova_senha: senha })}
+          pending={resetMutation.isPending}
+        />
+      )}
     </div>
   );
 }
+
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+          <button onClick={onClose} className="rounded-md p-1 text-muted-foreground hover:bg-muted">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="mt-4">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function EditUserDialog({
+  user,
+  onClose,
+  onSubmit,
+  pending,
+}: {
+  user: UserRow;
+  onClose: () => void;
+  onSubmit: (vars: { user_id: string; nome: string; email: string; perfil: "usuario" | "lider" | "coordenador" | "admin" }) => void;
+  pending: boolean;
+}) {
+  const [nome, setNome] = useState(user.nome);
+  const [email, setEmail] = useState(user.email);
+  const [perfil, setPerfil] = useState<"usuario" | "lider" | "coordenador" | "admin">(
+    (user.role as "usuario" | "lider" | "coordenador" | "admin") ?? "usuario",
+  );
+
+  return (
+    <Modal title="Editar usuário" onClose={onClose}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit({ user_id: user.id, nome: nome.trim(), email: email.trim().toLowerCase(), perfil });
+        }}
+        className="space-y-4"
+      >
+        <div>
+          <label className="text-xs font-medium text-muted-foreground">Nome</label>
+          <input
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            required
+            maxLength={120}
+            className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-muted-foreground">E-mail</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            maxLength={255}
+            className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-muted-foreground">Perfil</label>
+          <select
+            value={perfil}
+            onChange={(e) => setPerfil(e.target.value as typeof perfil)}
+            className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="usuario">Usuário</option>
+            <option value="lider">Líder</option>
+            <option value="coordenador">Coordenador</option>
+            <option value="admin">Administrador</option>
+          </select>
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-muted"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={pending}
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+          >
+            {pending && <Loader2 className="h-4 w-4 animate-spin" />}
+            Salvar
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function ResetPasswordDialog({
+  user,
+  onClose,
+  onSubmit,
+  pending,
+}: {
+  user: UserRow;
+  onClose: () => void;
+  onSubmit: (senha: string) => void;
+  pending: boolean;
+}) {
+  const [senha, setSenha] = useState("");
+  const [confirma, setConfirma] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+
+  return (
+    <Modal title={`Redefinir senha — ${user.nome}`} onClose={onClose}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          setErr(null);
+          if (senha.length < 6) return setErr("A senha precisa ter pelo menos 6 caracteres.");
+          if (senha !== confirma) return setErr("As senhas não coincidem.");
+          onSubmit(senha);
+        }}
+        className="space-y-4"
+      >
+        <p className="text-xs text-muted-foreground">
+          Defina uma nova senha provisória. O usuário será obrigado a trocá-la no próximo login.
+        </p>
+        <div>
+          <label className="text-xs font-medium text-muted-foreground">Nova senha</label>
+          <input
+            type="password"
+            value={senha}
+            onChange={(e) => setSenha(e.target.value)}
+            required
+            minLength={6}
+            maxLength={72}
+            className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-muted-foreground">Confirmar senha</label>
+          <input
+            type="password"
+            value={confirma}
+            onChange={(e) => setConfirma(e.target.value)}
+            required
+            minLength={6}
+            maxLength={72}
+            className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          />
+        </div>
+        {err && <p className="text-sm text-destructive">{err}</p>}
+        <div className="flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-muted"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={pending}
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+          >
+            {pending && <Loader2 className="h-4 w-4 animate-spin" />}
+            Redefinir
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
