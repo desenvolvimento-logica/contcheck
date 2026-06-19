@@ -90,6 +90,9 @@ function AdminPage() {
       qc.invalidateQueries({ queryKey: ["admin", "users"] });
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : "Falha ao redefinir senha."),
+  });
+
+
 
 
   function handleFile(file: File) {
