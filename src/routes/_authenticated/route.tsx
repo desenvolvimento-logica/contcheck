@@ -9,6 +9,7 @@ import {
 import { LogOut, BarChart3, Users, Shield, Home as HomeIcon, KeyRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { PatchNotesBell } from "@/components/PatchNotes";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
