@@ -96,6 +96,7 @@ function Shell() {
             <span className="hidden sm:inline">
               {me?.profile.nome || me?.profile.email} · <span className="capitalize">{role}</span>
             </span>
+            <PatchNotesBell />
             <Link
               to="/change-password"
               className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 hover:bg-muted"
