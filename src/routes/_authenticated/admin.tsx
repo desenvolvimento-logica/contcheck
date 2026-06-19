@@ -417,6 +417,8 @@ function ResetPasswordDialog({
   onSubmit: (senha: string) => void;
   pending: boolean;
 }) {
+  const DEFAULT_PWD = "Trocar@123";
+  const [mode, setMode] = useState<"padrao" | "custom">("padrao");
   const [senha, setSenha] = useState("");
   const [confirma, setConfirma] = useState("");
   const [err, setErr] = useState<string | null>(null);
@@ -427,39 +429,78 @@ function ResetPasswordDialog({
         onSubmit={(e) => {
           e.preventDefault();
           setErr(null);
+          if (mode === "padrao") {
+            onSubmit(DEFAULT_PWD);
+            return;
+          }
           if (senha.length < 6) return setErr("A senha precisa ter pelo menos 6 caracteres.");
           if (senha !== confirma) return setErr("As senhas não coincidem.");
           onSubmit(senha);
         }}
         className="space-y-4"
       >
-        <p className="text-xs text-muted-foreground">
-          Defina uma nova senha provisória. O usuário será obrigado a trocá-la no próximo login.
-        </p>
-        <div>
-          <label className="text-xs font-medium text-muted-foreground">Nova senha</label>
-          <input
-            type="password"
-            value={senha}
-            onChange={(e) => setSenha(e.target.value)}
-            required
-            minLength={6}
-            maxLength={72}
-            className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-          />
+        <div className="space-y-2">
+          <label className="flex items-start gap-2 rounded-md border border-input p-3 text-sm cursor-pointer hover:bg-muted/50">
+            <input
+              type="radio"
+              name="reset-mode"
+              checked={mode === "padrao"}
+              onChange={() => setMode("padrao")}
+              className="mt-0.5"
+            />
+            <span>
+              <span className="font-medium text-foreground">Redefinir para o padrão</span>
+              <span className="block text-xs text-muted-foreground">
+                Senha provisória: <code className="rounded bg-muted px-1 py-0.5 font-mono">{DEFAULT_PWD}</code>. O usuário trocará no próximo login.
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 rounded-md border border-input p-3 text-sm cursor-pointer hover:bg-muted/50">
+            <input
+              type="radio"
+              name="reset-mode"
+              checked={mode === "custom"}
+              onChange={() => setMode("custom")}
+              className="mt-0.5"
+            />
+            <span>
+              <span className="font-medium text-foreground">Definir uma senha</span>
+              <span className="block text-xs text-muted-foreground">
+                O usuário também precisará trocá-la no próximo login.
+              </span>
+            </span>
+          </label>
         </div>
-        <div>
-          <label className="text-xs font-medium text-muted-foreground">Confirmar senha</label>
-          <input
-            type="password"
-            value={confirma}
-            onChange={(e) => setConfirma(e.target.value)}
-            required
-            minLength={6}
-            maxLength={72}
-            className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-          />
-        </div>
+
+        {mode === "custom" && (
+          <>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Nova senha</label>
+              <input
+                type="password"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                required
+                minLength={6}
+                maxLength={72}
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Confirmar senha</label>
+              <input
+                type="password"
+                value={confirma}
+                onChange={(e) => setConfirma(e.target.value)}
+                required
+                minLength={6}
+                maxLength={72}
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+            </div>
+          </>
+        )}
+
         {err && <p className="text-sm text-destructive">{err}</p>}
         <div className="flex justify-end gap-2 pt-2">
           <button
