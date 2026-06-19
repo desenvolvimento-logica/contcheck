@@ -4,24 +4,7 @@ import { GitCompareArrows, Scale, ArrowRight } from "lucide-react";
 import { CompareLaunches } from "@/components/CompareLaunches";
 import { InvertedBalance } from "@/components/InvertedBalance";
 
-export const Route = createFileRoute("/")({
-  ssr: false,
-  head: () => ({
-    meta: [
-      { title: "Análise de Relatórios Contábeis — Domínio" },
-      {
-        name: "description",
-        content:
-          "Compare lançamentos contábeis e identifique saldos invertidos a partir de relatórios PDF exportados do sistema Domínio.",
-      },
-      { property: "og:title", content: "Análise de Relatórios Contábeis — Domínio" },
-      {
-        property: "og:description",
-        content:
-          "Compare lançamentos contábeis e identifique saldos invertidos a partir de relatórios PDF exportados do sistema Domínio.",
-      },
-    ],
-  }),
+export const Route = createFileRoute("/_authenticated/")({
   component: Index,
 });
 
@@ -31,25 +14,11 @@ function Index() {
   const [view, setView] = useState<View>("home");
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2.5">
-            <div className="h-7 w-7 rounded-md bg-accent" aria-hidden />
-            <span className="text-sm font-semibold tracking-tight text-foreground">
-              Auditoria Contábil
-            </span>
-          </div>
-          <span className="text-xs text-muted-foreground">Relatórios Domínio</span>
-        </div>
-      </header>
-
-      <main className="px-6 py-10 sm:py-16">
-        {view === "home" && <Home onSelect={setView} />}
-        {view === "compare" && <CompareLaunches onBack={() => setView("home")} />}
-        {view === "inverted" && <InvertedBalance onBack={() => setView("home")} />}
-      </main>
-    </div>
+    <>
+      {view === "home" && <Home onSelect={setView} />}
+      {view === "compare" && <CompareLaunches onBack={() => setView("home")} />}
+      {view === "inverted" && <InvertedBalance onBack={() => setView("home")} />}
+    </>
   );
 }
 
@@ -65,8 +34,7 @@ function Home({ onSelect }: { onSelect: (v: View) => void }) {
         </h1>
         <p className="mt-3 text-base text-muted-foreground">
           Faça upload de relatórios em PDF exportados do sistema Domínio para
-          comparar lançamentos contábeis ou identificar saldos com natureza
-          invertida.
+          comparar lançamentos contábeis ou identificar saldos com natureza invertida.
         </p>
       </div>
 
@@ -74,7 +42,7 @@ function Home({ onSelect }: { onSelect: (v: View) => void }) {
         <Card
           icon={<GitCompareArrows className="h-5 w-5" />}
           title="Comparar Lançamentos Contábeis"
-          description="Identifica variações superiores a 30% entre Mês 1, Mês 2 e Mês 3 para uma classificação específica."
+          description="Identifica variações superiores ao limite para todas as classificações de 5º nível."
           onClick={() => onSelect("compare")}
         />
         <Card

@@ -1,5 +1,6 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, Loader2, ArrowLeft } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
 import { UploadArea } from "./UploadArea";
 import {
   extractAllFifthLevelRows,
@@ -7,6 +8,7 @@ import {
   formatBRL,
   type AllClassificationsResult,
 } from "@/lib/pdf-parser";
+import { saveAnalysis } from "@/lib/analyses.functions";
 
 type Props = { onBack: () => void };
 
@@ -16,11 +18,47 @@ type State =
   | { kind: "idle" }
   | { kind: "processing" }
   | { kind: "error"; message: string }
-  | { kind: "done"; result: AllClassificationsResult };
+  | { kind: "done"; result: AllClassificationsResult; fileName: string };
 
 export function CompareLaunches({ onBack }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [state, setState] = useState<State>({ kind: "idle" });
+  const persist = useServerFn(saveAnalysis);
+  const persistedFor = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (state.kind !== "done") return;
+    const key = `${state.fileName}::${state.result.rows.length}`;
+    if (persistedFor.current === key) return;
+    persistedFor.current = key;
+    const above = state.result.rows.filter((r) => r.hasDivergence);
+    const avg =
+      state.result.rows.length === 0
+        ? 0
+        : state.result.rows.reduce((s, r) => s + (Number.isFinite(r.avgVariation) ? r.avgVariation : 0), 0) /
+          state.result.rows.length;
+    const top = [...above]
+      .sort((a, b) => Math.abs(b.avgVariation) - Math.abs(a.avgVariation))
+      .slice(0, 10)
+      .map((r) => ({
+        classification: r.classification,
+        description: r.description ?? "",
+        avgVariation: Number.isFinite(r.avgVariation) ? r.avgVariation : 0,
+      }));
+    persist({
+      data: {
+        fileName: state.fileName,
+        months: state.result.headers,
+        threshold: THRESHOLD,
+        totalClassifications: state.result.rows.length,
+        aboveLimitCount: above.length,
+        avgVariation: Number(avg.toFixed(4)),
+        topClassifications: top,
+      },
+    }).catch((err) => {
+      console.error("[analyses] save failed", err);
+    });
+  }, [state, persist]);
 
   async function process(f: File) {
     setState({ kind: "processing" });
@@ -42,7 +80,7 @@ export function CompareLaunches({ onBack }: Props) {
         });
         return;
       }
-      setState({ kind: "done", result });
+      setState({ kind: "done", result, fileName: f.name });
     } catch (e) {
       setState({
         kind: "error",
@@ -50,6 +88,7 @@ export function CompareLaunches({ onBack }: Props) {
       });
     }
   }
+
 
   function handleFile(f: File) {
     setFile(f);
