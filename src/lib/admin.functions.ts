@@ -11,11 +11,9 @@ const userRow = z.object({
 
 const bulkSchema = z.object({ users: z.array(userRow).min(1).max(500) });
 
-async function ensureAdmin(context: {
-  supabase: ReturnType<typeof Object>;
-  userId: string;
-}) {
-  // @ts-expect-error - context types from middleware
+type AuthCtx = { supabase: ReturnType<typeof import("@supabase/supabase-js").createClient>; userId: string };
+
+async function ensureAdmin(context: AuthCtx) {
   const { data, error } = await context.supabase.rpc("has_role", {
     _user_id: context.userId,
     _role: "admin",
@@ -23,6 +21,7 @@ async function ensureAdmin(context: {
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Acesso negado: somente administradores.");
 }
+
 
 export const bulkCreateUsers = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
