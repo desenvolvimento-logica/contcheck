@@ -23,7 +23,7 @@ export const bulkCreateUsers = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => bulkSchema.parse(d))
   .handler(async ({ data, context }) => {
-    await ensureAdmin(context);
+    await ensureAdmin(context.supabase as never, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const results: { email: string; status: "created" | "failed"; message?: string }[] = [];
@@ -60,7 +60,7 @@ export const bulkCreateUsers = createServerFn({ method: "POST" })
 export const listAllUsers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await ensureAdmin(context);
+    await ensureAdmin(context.supabase as never, context.userId);
     const [{ data: profiles, error: pErr }, { data: roles, error: rErr }] = await Promise.all([
       context.supabase.from("profiles").select("id, nome, email, must_change_password, created_at"),
       context.supabase.from("user_roles").select("user_id, role"),
