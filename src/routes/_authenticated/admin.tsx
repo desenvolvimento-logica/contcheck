@@ -3,13 +3,23 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import Papa from "papaparse";
-import { Loader2, Upload, FileText } from "lucide-react";
-import { bulkCreateUsers, listAllUsers } from "@/lib/admin.functions";
+import { Loader2, Upload, FileText, Pencil, KeyRound, X } from "lucide-react";
+import { bulkCreateUsers, listAllUsers, updateUser, resetUserPassword } from "@/lib/admin.functions";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminPage,
 });
+
+type UserRow = {
+  id: string;
+  nome: string;
+  email: string;
+  must_change_password: boolean;
+  role: string;
+};
+
 
 type CsvRow = { nome: string; email: string; perfil: string; senha_provisoria: string };
 
