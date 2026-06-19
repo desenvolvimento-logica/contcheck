@@ -71,6 +71,27 @@ function AdminPage() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: (vars: { user_id: string; nome: string; email: string; perfil: "usuario" | "lider" | "coordenador" | "admin" }) =>
+      update({ data: vars }),
+    onSuccess: () => {
+      toast.success("Usuário atualizado.");
+      setEditing(null);
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : "Falha ao atualizar."),
+  });
+
+  const resetMutation = useMutation({
+    mutationFn: (vars: { user_id: string; nova_senha: string }) => resetPwd({ data: vars }),
+    onSuccess: () => {
+      toast.success("Senha redefinida. O usuário deverá alterá-la no próximo login.");
+      setResetting(null);
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : "Falha ao redefinir senha."),
+
+
   function handleFile(file: File) {
     setParseError(null);
     setLastResult(null);
