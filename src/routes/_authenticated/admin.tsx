@@ -28,6 +28,8 @@ function AdminPage() {
   const { data: me, isLoading: meLoading } = useCurrentUser();
   const list = useServerFn(listAllUsers);
   const bulk = useServerFn(bulkCreateUsers);
+  const update = useServerFn(updateUser);
+  const resetPwd = useServerFn(resetUserPassword);
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [parsedRows, setParsedRows] = useState<CsvRow[]>([]);
@@ -35,6 +37,9 @@ function AdminPage() {
   const [lastResult, setLastResult] = useState<
     { email: string; status: "created" | "failed"; message?: string }[] | null
   >(null);
+  const [editing, setEditing] = useState<UserRow | null>(null);
+  const [resetting, setResetting] = useState<UserRow | null>(null);
+
 
   if (!meLoading && me && me.role !== "admin") {
     navigate({ to: "/" });
