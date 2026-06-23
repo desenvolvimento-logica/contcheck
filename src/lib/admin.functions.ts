@@ -12,11 +12,30 @@ const userRow = z.object({
 
 const bulkSchema = z.object({ users: z.array(userRow).min(1).max(500) });
 
-async function ensureAdmin(supabase: { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> }, userId: string) {
-  const { data, error } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+async function ensureAdmin(
+  supabase: {
+    from: (table: string) => {
+      select: (cols: string) => {
+        eq: (col: string, val: string) => {
+          eq: (col: string, val: string) => {
+            maybeSingle: () => Promise<{ data: unknown; error: { message: string } | null }>;
+          };
+        };
+      };
+    };
+  },
+  userId: string,
+) {
+  const { data, error } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("role", "admin")
+    .maybeSingle();
   if (error) failSafe(error, "Não foi possível validar permissões.");
   if (!data) throw new Error("Acesso negado: somente administradores.");
 }
+
 
 export const bulkCreateUsers = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

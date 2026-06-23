@@ -6,18 +6,28 @@ type AnySupabase = {
   from: (table: string) => {
     select: (cols: string) => {
       eq: (col: string, val: string) => {
-        maybeSingle: () => Promise<{ data: { must_change_password: boolean } | null; error: { message: string } | null }>;
-        eq?: (col: string, val: string) => unknown;
+        maybeSingle: () => Promise<{ data: Record<string, unknown> | null; error: { message: string } | null }>;
+        eq: (col: string, val: string) => {
+          maybeSingle: () => Promise<{ data: Record<string, unknown> | null; error: { message: string } | null }>;
+        };
       };
     };
   };
-  rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
 };
+
+async function isAdminUser(supabase: AnySupabase, userId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("role", "admin")
+    .maybeSingle();
+  return !!data;
+}
 
 export async function ensurePasswordChanged(supabase: AnySupabase, userId: string) {
   // Admins are exempt from the mandatory password-change gate.
-  const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
-  if (isAdmin) return;
+  if (await isAdminUser(supabase, userId)) return;
 
   const { data, error } = await supabase
     .from("profiles")
@@ -28,10 +38,11 @@ export async function ensurePasswordChanged(supabase: AnySupabase, userId: strin
     console.error("[ensurePasswordChanged]", error.message);
     throw new Error("Não foi possível validar a sessão.");
   }
-  if (data?.must_change_password) {
+  if ((data as { must_change_password?: boolean } | null)?.must_change_password) {
     throw new Error("PASSWORD_CHANGE_REQUIRED");
   }
 }
+
 
 // Generic mapping of Supabase/PG errors to a safe user-facing message.
 // The raw error is logged server-side; only the friendly message is thrown.
