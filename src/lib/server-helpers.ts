@@ -15,6 +15,10 @@ type AnySupabase = {
 };
 
 export async function ensurePasswordChanged(supabase: AnySupabase, userId: string) {
+  // Admins are exempt from the mandatory password-change gate.
+  const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+  if (isAdmin) return;
+
   const { data, error } = await supabase
     .from("profiles")
     .select("must_change_password")
