@@ -7,12 +7,18 @@ type AnySupabase = {
     select: (cols: string) => {
       eq: (col: string, val: string) => {
         maybeSingle: () => Promise<{ data: { must_change_password: boolean } | null; error: { message: string } | null }>;
+        eq?: (col: string, val: string) => unknown;
       };
     };
   };
+  rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
 };
 
 export async function ensurePasswordChanged(supabase: AnySupabase, userId: string) {
+  // Admins are exempt from the mandatory password-change gate.
+  const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+  if (isAdmin) return;
+
   const { data, error } = await supabase
     .from("profiles")
     .select("must_change_password")
