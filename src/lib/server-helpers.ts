@@ -7,9 +7,11 @@ type AnySupabase = {
     select: (cols: string) => {
       eq: (col: string, val: string) => {
         maybeSingle: () => Promise<{ data: { must_change_password: boolean } | null; error: { message: string } | null }>;
+        eq?: (col: string, val: string) => unknown;
       };
     };
   };
+  rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
 };
 
 export async function ensurePasswordChanged(supabase: AnySupabase, userId: string) {
