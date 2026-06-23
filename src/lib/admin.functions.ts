@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { ensurePasswordChanged, failSafe, generateProvisionalPassword } from "@/lib/server-helpers";
+import { failSafe, generateProvisionalPassword } from "@/lib/server-helpers";
 
 const userRow = z.object({
   nome: z.string().min(1).max(120),
@@ -22,7 +22,6 @@ export const bulkCreateUsers = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => bulkSchema.parse(d))
   .handler(async ({ data, context }) => {
-    await ensurePasswordChanged(context.supabase as never, context.userId);
     await ensureAdmin(context.supabase as never, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -56,7 +55,6 @@ export const bulkCreateUsers = createServerFn({ method: "POST" })
 export const listAllUsers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await ensurePasswordChanged(context.supabase as never, context.userId);
     await ensureAdmin(context.supabase as never, context.userId);
     const [{ data: profiles, error: pErr }, { data: roles, error: rErr }] = await Promise.all([
       context.supabase.from("profiles").select("id, nome, email, must_change_password, created_at"),
@@ -81,7 +79,6 @@ export const updateUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => updateSchema.parse(d))
   .handler(async ({ data, context }) => {
-    await ensurePasswordChanged(context.supabase as never, context.userId);
     await ensureAdmin(context.supabase as never, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -129,7 +126,6 @@ export const resetUserPassword = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => resetSchema.parse(d))
   .handler(async ({ data, context }) => {
-    await ensurePasswordChanged(context.supabase as never, context.userId);
     await ensureAdmin(context.supabase as never, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
