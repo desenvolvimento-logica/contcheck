@@ -302,7 +302,7 @@ function AdminPage() {
         <ResetPasswordDialog
           user={resetting}
           onClose={() => setResetting(null)}
-          onSubmit={(senha) => resetMutation.mutate({ user_id: resetting.id, nova_senha: senha })}
+          onSubmit={(payload) => resetMutation.mutate({ user_id: resetting.id, ...payload })}
           pending={resetMutation.isPending}
         />
       )}
