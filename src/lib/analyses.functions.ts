@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { ensurePasswordChanged, failSafe } from "@/lib/server-helpers";
 
 const saveSchema = z.object({
   fileName: z.string().min(1).max(255),
@@ -24,6 +25,7 @@ export const saveAnalysis = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => saveSchema.parse(d))
   .handler(async ({ data, context }) => {
+    await ensurePasswordChanged(context.supabase as never, context.userId);
     const { error, data: row } = await context.supabase
       .from("analyses")
       .insert({
@@ -39,19 +41,20 @@ export const saveAnalysis = createServerFn({ method: "POST" })
       })
       .select("id")
       .single();
-    if (error) throw new Error(error.message);
-    return { id: row.id };
+    if (error) failSafe(error, "Não foi possível salvar a análise.");
+    return { id: row!.id };
   });
 
 export const listAnalyses = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await ensurePasswordChanged(context.supabase as never, context.userId);
     const { data, error } = await context.supabase
       .from("analyses")
       .select("*")
       .order("created_at", { ascending: false })
       .limit(500);
-    if (error) throw new Error(error.message);
+    if (error) failSafe(error, "Não foi possível carregar as análises.");
 
     const userIds = Array.from(new Set((data ?? []).map((a) => a.user_id)));
     let profilesById = new Map<string, { nome: string; email: string }>();
@@ -81,6 +84,8 @@ export const listAnalyses = createServerFn({ method: "GET" })
 export const getMyProfile = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    // No ensurePasswordChanged here — the client needs this to know whether
+    // to redirect to /change-password.
     const [{ data: profile }, { data: roles }] = await Promise.all([
       context.supabase
         .from("profiles")
@@ -107,10 +112,11 @@ export const getMyProfile = createServerFn({ method: "GET" })
 export const markPasswordChanged = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    // Whitelisted from ensurePasswordChanged — this is part of the change flow.
     const { error } = await context.supabase
       .from("profiles")
       .update({ must_change_password: false })
       .eq("id", context.userId);
-    if (error) throw new Error(error.message);
+    if (error) failSafe(error, "Não foi possível registrar a troca de senha.");
     return { ok: true };
   });

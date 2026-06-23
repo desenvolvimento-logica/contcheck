@@ -83,9 +83,14 @@ function AdminPage() {
   });
 
   const resetMutation = useMutation({
-    mutationFn: (vars: { user_id: string; nova_senha: string }) => resetPwd({ data: vars }),
-    onSuccess: () => {
-      toast.success("Senha redefinida. O usuário deverá alterá-la no próximo login.");
+    mutationFn: (vars: { user_id: string; mode: "padrao" | "custom"; nova_senha?: string }) =>
+      resetPwd({ data: vars }),
+    onSuccess: (res) => {
+      if (res?.senha) {
+        toast.success(`Senha provisória gerada: ${res.senha}`, { duration: 15000 });
+      } else {
+        toast.success("Senha redefinida. O usuário deverá alterá-la no próximo login.");
+      }
       setResetting(null);
       qc.invalidateQueries({ queryKey: ["admin", "users"] });
     },
@@ -297,7 +302,7 @@ function AdminPage() {
         <ResetPasswordDialog
           user={resetting}
           onClose={() => setResetting(null)}
-          onSubmit={(senha) => resetMutation.mutate({ user_id: resetting.id, nova_senha: senha })}
+          onSubmit={(payload) => resetMutation.mutate({ user_id: resetting.id, ...payload })}
           pending={resetMutation.isPending}
         />
       )}
@@ -414,10 +419,9 @@ function ResetPasswordDialog({
 }: {
   user: UserRow;
   onClose: () => void;
-  onSubmit: (senha: string) => void;
+  onSubmit: (payload: { mode: "padrao" | "custom"; nova_senha?: string }) => void;
   pending: boolean;
 }) {
-  const DEFAULT_PWD = "Trocar@123";
   const [mode, setMode] = useState<"padrao" | "custom">("padrao");
   const [senha, setSenha] = useState("");
   const [confirma, setConfirma] = useState("");
@@ -430,12 +434,12 @@ function ResetPasswordDialog({
           e.preventDefault();
           setErr(null);
           if (mode === "padrao") {
-            onSubmit(DEFAULT_PWD);
+            onSubmit({ mode: "padrao" });
             return;
           }
           if (senha.length < 6) return setErr("A senha precisa ter pelo menos 6 caracteres.");
           if (senha !== confirma) return setErr("As senhas não coincidem.");
-          onSubmit(senha);
+          onSubmit({ mode: "custom", nova_senha: senha });
         }}
         className="space-y-4"
       >
@@ -449,9 +453,9 @@ function ResetPasswordDialog({
               className="mt-0.5"
             />
             <span>
-              <span className="font-medium text-foreground">Redefinir para o padrão</span>
+              <span className="font-medium text-foreground">Gerar senha provisória</span>
               <span className="block text-xs text-muted-foreground">
-                Senha provisória: <code className="rounded bg-muted px-1 py-0.5 font-mono">{DEFAULT_PWD}</code>. O usuário trocará no próximo login.
+                Uma senha aleatória será gerada no servidor e exibida apenas uma vez para você. O usuário trocará no próximo login.
               </span>
             </span>
           </label>
