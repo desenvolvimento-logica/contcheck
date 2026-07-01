@@ -155,7 +155,7 @@ function formatPct(p: number | null): string {
   return `${p >= 0 ? "+" : ""}${p.toFixed(2)}%`;
 }
 
-function ResultTable({ result }: { result: AllClassificationsResult }) {
+function ResultTable({ result, fileName }: { result: AllClassificationsResult; fileName: string }) {
   const divergentCount = result.rows.filter((r) => r.hasDivergence).length;
   return (
     <div className="space-y-4">
