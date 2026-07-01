@@ -157,6 +157,102 @@ function formatPct(p: number | null): string {
 
 function ResultTable({ result, fileName }: { result: AllClassificationsResult; fileName: string }) {
   const divergentCount = result.rows.filter((r) => r.hasDivergence).length;
+
+  function exportPdf() {
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 8;
+
+    doc.setFontSize(14);
+    doc.text("Comparativo de Lançamentos Contábeis", margin, 12);
+    doc.setFontSize(9);
+    doc.setTextColor(90);
+    doc.text(`Arquivo: ${fileName}`, margin, 17);
+    doc.text(
+      `Limite de variação: ${THRESHOLD}% • ${divergentCount} de ${result.rows.length} classificações acima do limite`,
+      margin,
+      21,
+    );
+    doc.text(`Gerado em ${new Date().toLocaleString("pt-BR")}`, pageWidth - margin, 21, {
+      align: "right",
+    });
+
+    const head = [
+      [
+        "Classificação",
+        "Descrição",
+        ...result.headers,
+        "Média Var.",
+      ],
+    ];
+
+    const body = result.rows.map((r) => {
+      const valueCells = r.values.map((v, i) => {
+        const pct = r.variations[i];
+        const pctStr = pct === null ? "" : Number.isFinite(pct) ? `\n(${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%)` : "\n(∞)";
+        return { content: `${formatBRL(v)}${pctStr}`, styles: {} as Record<string, unknown> };
+      });
+      return [
+        r.classification,
+        r.description || "—",
+        ...valueCells,
+        `${r.avgVariation.toFixed(2)}%`,
+      ];
+    });
+
+    autoTable(doc, {
+      startY: 25,
+      head,
+      body,
+      margin: { left: margin, right: margin, top: 25, bottom: 8 },
+      styles: { fontSize: 7, cellPadding: 1.5, overflow: "linebreak" },
+      headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: "bold", fontSize: 7 },
+      columnStyles: {
+        0: { cellWidth: 26, font: "courier", fontSize: 7 },
+        1: { cellWidth: 55 },
+      },
+      didParseCell: (data) => {
+        if (data.section !== "body") return;
+        const row = result.rows[data.row.index];
+        if (!row) return;
+        const valueStart = 2;
+        const valueEnd = valueStart + row.values.length - 1;
+        if (data.column.index >= valueStart && data.column.index <= valueEnd) {
+          const i = data.column.index - valueStart;
+          const pct = row.variations[i];
+          data.cell.styles.halign = "right";
+          if (pct !== null && Number.isFinite(pct) && Math.abs(pct) > THRESHOLD) {
+            data.cell.styles.fillColor = [254, 243, 199];
+            data.cell.styles.textColor = [120, 53, 15];
+            data.cell.styles.fontStyle = "bold";
+          }
+        }
+        if (data.column.index === valueEnd + 1) {
+          data.cell.styles.halign = "right";
+          if (row.hasDivergence) {
+            data.cell.styles.textColor = [120, 53, 15];
+            data.cell.styles.fontStyle = "bold";
+          }
+        }
+      },
+      didDrawPage: () => {
+        const pageCount = doc.getNumberOfPages();
+        const pageCurrent = doc.getCurrentPageInfo().pageNumber;
+        doc.setFontSize(8);
+        doc.setTextColor(120);
+        doc.text(
+          `Página ${pageCurrent} de ${pageCount}`,
+          pageWidth - margin,
+          doc.internal.pageSize.getHeight() - 3,
+          { align: "right" },
+        );
+      },
+    });
+
+    const base = fileName.replace(/\.pdf$/i, "");
+    doc.save(`${base} - Comparativo.pdf`);
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
@@ -178,6 +274,13 @@ function ResultTable({ result, fileName }: { result: AllClassificationsResult; f
             </p>
           </>
         )}
+        <button
+          onClick={exportPdf}
+          className="ml-auto inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+        >
+          <Download className="h-3.5 w-3.5" />
+          Exportar PDF
+        </button>
       </div>
 
       <DraggableTable result={result} />
