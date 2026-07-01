@@ -144,7 +144,7 @@ export function CompareLaunches({ onBack }: Props) {
 
       {state.kind === "error" && <ErrorCard message={state.message} />}
 
-      {state.kind === "done" && <ResultTable result={state.result} />}
+      {state.kind === "done" && <ResultTable result={state.result} fileName={state.fileName} />}
     </div>
   );
 }
