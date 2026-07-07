@@ -96,6 +96,10 @@ export function CompareLaunches({ onBack }: Props) {
 
 
   function handleFile(f: File) {
+    if (clientName.trim().length === 0) {
+      setState({ kind: "error", message: "Informe o nome do cliente antes de enviar o PDF." });
+      return;
+    }
     setFile(f);
     void process(f);
   }
