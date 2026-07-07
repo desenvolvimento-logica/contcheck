@@ -52,6 +52,7 @@ export function CompareLaunches({ onBack }: Props) {
     persist({
       data: {
         fileName: state.fileName,
+        clientName: clientName.trim(),
         months: state.result.headers,
         threshold: THRESHOLD,
         totalClassifications: state.result.rows.length,
@@ -62,7 +63,7 @@ export function CompareLaunches({ onBack }: Props) {
     }).catch((err) => {
       console.error("[analyses] save failed", err);
     });
-  }, [state, persist]);
+  }, [state, persist, clientName]);
 
   async function process(f: File) {
     setState({ kind: "processing" });
