@@ -457,7 +457,7 @@ export function extractAllFifthLevelRows(
     });
   }
 
-  return { headers, rows: out };
+  return { headers, rows: out, companyName: extractCompanyName(rows) };
 }
 
 // ---------- Functionality 2: Inverted balance ----------
