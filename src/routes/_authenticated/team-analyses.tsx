@@ -95,6 +95,7 @@ function TeamAnalysesPage() {
               <th className="px-4 py-3 text-left">Data</th>
               <th className="px-4 py-3 text-left">Autor</th>
               <th className="px-4 py-3 text-left">Perfil</th>
+              <th className="px-4 py-3 text-left">Cliente</th>
               <th className="px-4 py-3 text-left">Arquivo</th>
               <th className="px-4 py-3 text-left">Meses</th>
               <th className="px-4 py-3 text-right">Limite</th>
@@ -106,14 +107,14 @@ function TeamAnalysesPage() {
           <tbody>
             {q.isLoading && (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">
                   Carregando...
                 </td>
               </tr>
             )}
             {!q.isLoading && rows.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">
                   Nenhuma análise encontrada.
                 </td>
               </tr>
@@ -129,6 +130,7 @@ function TeamAnalysesPage() {
                 </td>
                 <td className="px-4 py-2">{a.author.nome || a.author.email}</td>
                 <td className="px-4 py-2 capitalize">{a.role}</td>
+                <td className="px-4 py-2">{a.client_name || "—"}</td>
                 <td className="px-4 py-2">{a.file_name}</td>
                 <td className="px-4 py-2 text-xs">{(a.months ?? []).join(" / ")}</td>
                 <td className="px-4 py-2 text-right tabular-nums">{Number(a.threshold).toFixed(0)}%</td>
@@ -184,6 +186,9 @@ function AnalysisDetailDialog({
         {analysis && (
           <div className="space-y-4 text-sm">
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
+              <dt className="text-muted-foreground">Cliente</dt>
+              <dd className="text-right font-medium">{analysis.client_name || "—"}</dd>
+
               <dt className="text-muted-foreground">Arquivo</dt>
               <dd className="text-right font-medium break-all">{analysis.file_name}</dd>
 

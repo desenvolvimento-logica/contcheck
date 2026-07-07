@@ -24,14 +24,16 @@ type State =
 
 export function CompareLaunches({ onBack }: Props) {
   const [file, setFile] = useState<File | null>(null);
+  const [clientName, setClientName] = useState("");
   const [state, setState] = useState<State>({ kind: "idle" });
   const persist = useServerFn(saveAnalysis);
   const persistedFor = useRef<string | null>(null);
 
   useEffect(() => {
     if (state.kind !== "done") return;
-    const key = `${state.fileName}::${state.result.rows.length}`;
+    const key = `${state.fileName}::${clientName}::${state.result.rows.length}`;
     if (persistedFor.current === key) return;
+    persistedFor.current = key;
     persistedFor.current = key;
     const above = state.result.rows.filter((r) => r.hasDivergence);
     const avg =
@@ -50,6 +52,7 @@ export function CompareLaunches({ onBack }: Props) {
     persist({
       data: {
         fileName: state.fileName,
+        clientName: clientName.trim(),
         months: state.result.headers,
         threshold: THRESHOLD,
         totalClassifications: state.result.rows.length,
@@ -60,7 +63,7 @@ export function CompareLaunches({ onBack }: Props) {
     }).catch((err) => {
       console.error("[analyses] save failed", err);
     });
-  }, [state, persist]);
+  }, [state, persist, clientName]);
 
   async function process(f: File) {
     setState({ kind: "processing" });
@@ -126,6 +129,20 @@ export function CompareLaunches({ onBack }: Props) {
           e destaca variações superiores a {THRESHOLD}% em relação ao mês anterior.
           A coluna "Saldo Acumulado", quando presente, é ignorada.
         </p>
+      </div>
+
+      <div>
+        <label htmlFor="client-name" className="block text-sm font-medium text-foreground">
+          Nome do cliente
+        </label>
+        <input
+          id="client-name"
+          type="text"
+          value={clientName}
+          onChange={(e) => setClientName(e.target.value)}
+          placeholder="Ex.: Empresa XYZ Ltda"
+          className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        />
       </div>
 
       <UploadArea
