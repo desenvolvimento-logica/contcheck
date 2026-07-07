@@ -95,6 +95,7 @@ function TeamAnalysesPage() {
               <th className="px-4 py-3 text-left">Data</th>
               <th className="px-4 py-3 text-left">Autor</th>
               <th className="px-4 py-3 text-left">Perfil</th>
+              <th className="px-4 py-3 text-left">Cliente</th>
               <th className="px-4 py-3 text-left">Arquivo</th>
               <th className="px-4 py-3 text-left">Meses</th>
               <th className="px-4 py-3 text-right">Limite</th>
