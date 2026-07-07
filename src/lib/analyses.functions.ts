@@ -5,6 +5,7 @@ import { ensurePasswordChanged, failSafe } from "@/lib/server-helpers";
 
 const saveSchema = z.object({
   fileName: z.string().min(1).max(255),
+  clientName: z.string().max(255).optional().default(""),
   months: z.array(z.string().max(40)).max(24),
   threshold: z.number().nonnegative(),
   totalClassifications: z.number().int().nonnegative(),
