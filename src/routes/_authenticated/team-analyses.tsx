@@ -186,6 +186,9 @@ function AnalysisDetailDialog({
         {analysis && (
           <div className="space-y-4 text-sm">
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
+              <dt className="text-muted-foreground">Cliente</dt>
+              <dd className="text-right font-medium">{analysis.client_name || "—"}</dd>
+
               <dt className="text-muted-foreground">Arquivo</dt>
               <dd className="text-right font-medium break-all">{analysis.file_name}</dd>
 
