@@ -136,25 +136,6 @@ export function CompareLaunches({ onBack }: Props) {
         </p>
       </div>
 
-      <div>
-        <label htmlFor="client-name" className="block text-sm font-medium text-foreground">
-          Nome do cliente <span className="text-destructive">*</span>
-        </label>
-        <input
-          id="client-name"
-          type="text"
-          value={clientName}
-          onChange={(e) => setClientName(e.target.value)}
-          placeholder="Ex.: Empresa XYZ Ltda"
-          maxLength={255}
-          required
-          aria-required="true"
-          className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-        <p className="mt-1 text-xs text-muted-foreground">
-          Informe o cliente antes de enviar o PDF.
-        </p>
-      </div>
 
       <UploadArea
         file={file}
