@@ -33,6 +33,7 @@ export const saveAnalysis = createServerFn({ method: "POST" })
         user_id: context.userId,
         analysis_type: "compare_launches",
         file_name: data.fileName,
+        client_name: data.clientName ?? "",
         months: data.months,
         threshold: data.threshold,
         total_classifications: data.totalClassifications,
