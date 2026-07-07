@@ -31,8 +31,9 @@ export function CompareLaunches({ onBack }: Props) {
 
   useEffect(() => {
     if (state.kind !== "done") return;
-    const key = `${state.fileName}::${state.result.rows.length}`;
+    const key = `${state.fileName}::${clientName}::${state.result.rows.length}`;
     if (persistedFor.current === key) return;
+    persistedFor.current = key;
     persistedFor.current = key;
     const above = state.result.rows.filter((r) => r.hasDivergence);
     const avg =
