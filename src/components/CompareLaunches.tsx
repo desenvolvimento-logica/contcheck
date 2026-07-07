@@ -24,6 +24,7 @@ type State =
 
 export function CompareLaunches({ onBack }: Props) {
   const [file, setFile] = useState<File | null>(null);
+  const [clientName, setClientName] = useState("");
   const [state, setState] = useState<State>({ kind: "idle" });
   const persist = useServerFn(saveAnalysis);
   const persistedFor = useRef<string | null>(null);
