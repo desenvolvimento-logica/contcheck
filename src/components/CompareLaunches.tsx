@@ -24,16 +24,14 @@ type State =
 
 export function CompareLaunches({ onBack }: Props) {
   const [file, setFile] = useState<File | null>(null);
-  const [clientName, setClientName] = useState("");
   const [state, setState] = useState<State>({ kind: "idle" });
   const persist = useServerFn(saveAnalysis);
   const persistedFor = useRef<string | null>(null);
 
   useEffect(() => {
     if (state.kind !== "done") return;
-    const key = `${state.fileName}::${clientName}::${state.result.rows.length}`;
+    const key = `${state.fileName}::${state.result.companyName}::${state.result.rows.length}`;
     if (persistedFor.current === key) return;
-    persistedFor.current = key;
     persistedFor.current = key;
     const above = state.result.rows.filter((r) => r.hasDivergence);
     const avg =
@@ -52,7 +50,7 @@ export function CompareLaunches({ onBack }: Props) {
     persist({
       data: {
         fileName: state.fileName,
-        clientName: clientName.trim(),
+        clientName: state.result.companyName,
         months: state.result.headers,
         threshold: THRESHOLD,
         totalClassifications: state.result.rows.length,
@@ -63,7 +61,7 @@ export function CompareLaunches({ onBack }: Props) {
     }).catch((err) => {
       console.error("[analyses] save failed", err);
     });
-  }, [state, persist, clientName]);
+  }, [state, persist]);
 
   async function process(f: File) {
     setState({ kind: "processing" });
@@ -85,6 +83,13 @@ export function CompareLaunches({ onBack }: Props) {
         });
         return;
       }
+      if (!result.companyName) {
+        setState({
+          kind: "error",
+          message: 'Não foi possível localizar o nome da empresa no PDF (campo "Empresa:").',
+        });
+        return;
+      }
       setState({ kind: "done", result, fileName: f.name });
     } catch (e) {
       setState({
@@ -96,10 +101,6 @@ export function CompareLaunches({ onBack }: Props) {
 
 
   function handleFile(f: File) {
-    if (clientName.trim().length === 0) {
-      setState({ kind: "error", message: "Informe o nome do cliente antes de enviar o PDF." });
-      return;
-    }
     setFile(f);
     void process(f);
   }
@@ -135,31 +136,11 @@ export function CompareLaunches({ onBack }: Props) {
         </p>
       </div>
 
-      <div>
-        <label htmlFor="client-name" className="block text-sm font-medium text-foreground">
-          Nome do cliente <span className="text-destructive">*</span>
-        </label>
-        <input
-          id="client-name"
-          type="text"
-          value={clientName}
-          onChange={(e) => setClientName(e.target.value)}
-          placeholder="Ex.: Empresa XYZ Ltda"
-          maxLength={255}
-          required
-          aria-required="true"
-          className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-        <p className="mt-1 text-xs text-muted-foreground">
-          Informe o cliente antes de enviar o PDF.
-        </p>
-      </div>
-
       <UploadArea
         file={file}
         onFile={handleFile}
         onClear={clear}
-        disabled={state.kind === "processing" || clientName.trim().length === 0}
+        disabled={state.kind === "processing"}
       />
 
       {state.kind === "processing" && (

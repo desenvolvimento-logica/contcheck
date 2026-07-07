@@ -320,7 +320,42 @@ export type ClassificationRow = {
 export type AllClassificationsResult = {
   headers: string[];
   rows: ClassificationRow[];
+  companyName: string;
 };
+
+/**
+ * Extracts the company name from a Domínio report. The label "Empresa:" may
+ * appear as its own token or glued to the value (e.g. "Empresa: ACME LTDA").
+ * The value can also span multiple tokens on the same visual row.
+ */
+export function extractCompanyName(rows: PdfRow[]): string {
+  for (const row of rows) {
+    for (let i = 0; i < row.tokens.length; i++) {
+      const t = row.tokens[i];
+      const m = t.match(/^empresa\s*:\s*(.*)$/i);
+      if (!m) continue;
+      let name = m[1].trim();
+      if (!name && i + 1 < row.tokens.length) {
+        // Value is in following tokens on the same row; stop at next label.
+        const rest: string[] = [];
+        for (let j = i + 1; j < row.tokens.length; j++) {
+          if (/^(cnpj|per[íi]odo|data|filial|regime|cidade|uf|munic[íi]pio)\s*:/i.test(row.tokens[j])) break;
+          rest.push(row.tokens[j]);
+        }
+        name = rest.join(" ").trim();
+      } else if (name && i + 1 < row.tokens.length) {
+        // Some reports split the name across siblings after "Empresa: FOO BAR"
+        for (let j = i + 1; j < row.tokens.length; j++) {
+          if (/^(cnpj|per[íi]odo|data|filial|regime|cidade|uf|munic[íi]pio)\s*:/i.test(row.tokens[j])) break;
+          name += " " + row.tokens[j];
+        }
+        name = name.trim();
+      }
+      if (name) return name.replace(/\s+/g, " ").slice(0, 255);
+    }
+  }
+  return "";
+}
 
 export function extractAllFifthLevelRows(
   rows: PdfRow[],
@@ -422,7 +457,7 @@ export function extractAllFifthLevelRows(
     });
   }
 
-  return { headers, rows: out };
+  return { headers, rows: out, companyName: extractCompanyName(rows) };
 }
 
 // ---------- Functionality 2: Inverted balance ----------
