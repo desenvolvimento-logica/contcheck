@@ -107,14 +107,14 @@ function TeamAnalysesPage() {
           <tbody>
             {q.isLoading && (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">
                   Carregando...
                 </td>
               </tr>
             )}
             {!q.isLoading && rows.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">
                   Nenhuma análise encontrada.
                 </td>
               </tr>
@@ -130,6 +130,7 @@ function TeamAnalysesPage() {
                 </td>
                 <td className="px-4 py-2">{a.author.nome || a.author.email}</td>
                 <td className="px-4 py-2 capitalize">{a.role}</td>
+                <td className="px-4 py-2">{a.client_name || "—"}</td>
                 <td className="px-4 py-2">{a.file_name}</td>
                 <td className="px-4 py-2 text-xs">{(a.months ?? []).join(" / ")}</td>
                 <td className="px-4 py-2 text-right tabular-nums">{Number(a.threshold).toFixed(0)}%</td>
