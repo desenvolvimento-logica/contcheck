@@ -136,25 +136,6 @@ export function CompareLaunches({ onBack }: Props) {
         </p>
       </div>
 
-
-      <UploadArea
-        file={file}
-        onFile={handleFile}
-        onClear={clear}
-        disabled={state.kind === "processing" || clientName.trim().length === 0}
-      />
-
-      {state.kind === "processing" && (
-        <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground shadow-sm">
-          <Loader2 className="h-4 w-4 animate-spin text-accent-foreground" />
-          Processando arquivo...
-        </div>
-      )}
-
-      {state.kind === "error" && <ErrorCard message={state.message} />}
-
-      {state.kind === "done" && <ResultTable result={state.result} fileName={state.fileName} />}
-    </div>
   );
 }
 
