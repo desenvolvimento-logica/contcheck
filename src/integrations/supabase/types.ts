@@ -19,6 +19,7 @@ export type Database = {
           above_limit_count: number
           analysis_type: string
           avg_variation: number
+          client_name: string
           created_at: string
           file_name: string
           id: string
@@ -32,6 +33,7 @@ export type Database = {
           above_limit_count?: number
           analysis_type?: string
           avg_variation?: number
+          client_name?: string
           created_at?: string
           file_name: string
           id?: string
@@ -45,6 +47,7 @@ export type Database = {
           above_limit_count?: number
           analysis_type?: string
           avg_variation?: number
+          client_name?: string
           created_at?: string
           file_name?: string
           id?: string
