@@ -85,6 +85,22 @@ function AuthPage() {
 
 
         <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-border bg-card p-6 shadow-sm">
+          {mode === "signup" && (
+            <div>
+              <label htmlFor="nome" className="block text-xs font-medium text-foreground">
+                Nome
+              </label>
+              <input
+                id="nome"
+                type="text"
+                required
+                autoComplete="name"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+            </div>
+          )}
           <div>
             <label htmlFor="email" className="block text-xs font-medium text-foreground">
               E-mail
@@ -107,7 +123,7 @@ function AuthPage() {
               id="password"
               type="password"
               required
-              autoComplete="current-password"
+              autoComplete={mode === "signin" ? "current-password" : "new-password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
@@ -119,6 +135,11 @@ function AuthPage() {
               {error}
             </p>
           )}
+          {info && (
+            <p className="text-sm text-foreground" role="status">
+              {info}
+            </p>
+          )}
 
           <button
             type="submit"
@@ -126,9 +147,25 @@ function AuthPage() {
             className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-            Entrar
+            {mode === "signin" ? "Entrar" : "Criar conta"}
           </button>
+
+          <p className="text-center text-xs text-muted-foreground">
+            {mode === "signin" ? "Não tem uma conta?" : "Já tem uma conta?"}{" "}
+            <button
+              type="button"
+              onClick={() => {
+                setMode(mode === "signin" ? "signup" : "signin");
+                setError(null);
+                setInfo(null);
+              }}
+              className="font-medium text-foreground underline underline-offset-2"
+            >
+              {mode === "signin" ? "Cadastre-se" : "Entrar"}
+            </button>
+          </p>
         </form>
+
       </div>
     </div>
   );
