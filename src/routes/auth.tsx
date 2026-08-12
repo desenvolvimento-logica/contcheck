@@ -54,7 +54,7 @@ function AuthPage() {
         return;
       }
       if (!data.session) {
-        setInfo("Conta criada! Confirme seu e-mail para acessar.");
+        setInfo("Conta criada! Faça login com seu e-mail e senha.");
         setMode("signin");
         setPassword("");
         return;
