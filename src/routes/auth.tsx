@@ -10,10 +10,13 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -25,6 +28,41 @@ function AuthPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setInfo(null);
+
+    if (mode === "signup") {
+      if (password.length < 8) {
+        setLoading(false);
+        setError("A senha deve ter ao menos 8 caracteres.");
+        return;
+      }
+      const { data, error: err } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: window.location.origin,
+          data: { nome: nome.trim(), self_signup: "true" },
+        },
+      });
+      setLoading(false);
+      if (err) {
+        setError(
+          err.message.toLowerCase().includes("already")
+            ? "Já existe uma conta com este e-mail."
+            : "Não foi possível criar a conta. Verifique os dados e tente novamente.",
+        );
+        return;
+      }
+      if (!data.session) {
+        setInfo("Conta criada! Confirme seu e-mail para acessar.");
+        setMode("signin");
+        setPassword("");
+        return;
+      }
+      navigate({ to: "/" });
+      return;
+    }
+
     const { error: err } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (err) {
@@ -40,8 +78,11 @@ function AuthPage() {
         <div className="mb-8 text-center">
           <div className="mx-auto h-10 w-10 rounded-md bg-accent" aria-hidden />
           <h1 className="mt-4 text-xl font-semibold text-foreground">Auditoria Contábil</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Acesse com suas credenciais.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {mode === "signin" ? "Acesse com suas credenciais." : "Crie sua conta para começar."}
+          </p>
         </div>
+
 
         <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-border bg-card p-6 shadow-sm">
           <div>
