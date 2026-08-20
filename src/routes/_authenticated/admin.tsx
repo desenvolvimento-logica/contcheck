@@ -39,7 +39,13 @@ function AdminPage() {
     { email: string; status: "created" | "failed"; message?: string }[] | null
   >(null);
   const [editing, setEditing] = useState<UserRow | null>(null);
-  const [resetting, setResetting] = useState<UserRow | null>(null);
+  const [single, setSingle] = useState<{ nome: string; email: string; perfil: CsvPerfil; senha: string }>({
+    nome: "",
+    email: "",
+    perfil: "usuario",
+    senha: "",
+  });
+
 
 
   if (!meLoading && me && me.role !== "admin") {
