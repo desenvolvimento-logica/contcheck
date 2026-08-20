@@ -112,7 +112,11 @@ function AdminPage() {
     mutationFn: (vars: { user_id: string; mode: "padrao" | "custom"; nova_senha?: string }) =>
       resetPwd({ data: vars }),
     onSuccess: (res) => {
-      if (res?.senha) {
+      if (!res?.ok) {
+        toast.error(res?.message ?? "Não foi possível redefinir a senha.");
+        return;
+      }
+      if (res.senha) {
         toast.success(`Senha provisória gerada: ${res.senha}`, { duration: 15000 });
       } else {
         toast.success("Senha redefinida. O usuário deverá alterá-la no próximo login.");
