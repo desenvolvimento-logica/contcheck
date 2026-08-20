@@ -55,7 +55,14 @@ export const bulkCreateUsers = createServerFn({ method: "POST" })
         });
         if (error || !created.user) {
           console.error("[bulkCreateUsers]", error?.message);
-          results.push({ email: u.email, status: "failed", message: "Não foi possível criar este usuário." });
+          const weak = /weak|pwned/i.test(error?.message ?? "");
+          results.push({
+            email: u.email,
+            status: "failed",
+            message: weak
+              ? "Senha provisória muito fraca/vazada. Use outra senha."
+              : "Não foi possível criar este usuário.",
+          });
           continue;
         }
         await supabaseAdmin
@@ -157,7 +164,14 @@ export const resetUserPassword = createServerFn({ method: "POST" })
     const { error: aErr } = await supabaseAdmin.auth.admin.updateUserById(data.user_id, {
       password: senha,
     });
-    if (aErr) failSafe(aErr, "Não foi possível redefinir a senha.");
+    if (aErr) {
+      failSafe(
+        aErr,
+        /weak|pwned/i.test(aErr.message ?? "")
+          ? "Esta senha é muito comum ou apareceu em vazamentos. Escolha outra."
+          : "Não foi possível redefinir a senha.",
+      );
+    }
 
     const { error: pErr } = await supabaseAdmin
       .from("profiles")

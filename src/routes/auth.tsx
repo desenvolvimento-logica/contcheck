@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { translateAuthError } from "@/lib/auth-errors";
+
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -30,6 +32,8 @@ function AuthPage() {
     setError(null);
     setInfo(null);
 
+    const cleanEmail = email.trim().toLowerCase();
+
     if (mode === "signup") {
       if (password.length < 8) {
         setLoading(false);
@@ -37,7 +41,7 @@ function AuthPage() {
         return;
       }
       const { data, error: err } = await supabase.auth.signUp({
-        email,
+        email: cleanEmail,
         password,
         options: {
           emailRedirectTo: window.location.origin,
@@ -46,11 +50,7 @@ function AuthPage() {
       });
       setLoading(false);
       if (err) {
-        setError(
-          err.message.toLowerCase().includes("already")
-            ? "Já existe uma conta com este e-mail."
-            : "Não foi possível criar a conta. Verifique os dados e tente novamente.",
-        );
+        setError(translateAuthError(err.message));
         return;
       }
       if (!data.session) {
@@ -63,14 +63,18 @@ function AuthPage() {
       return;
     }
 
-    const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+    const { error: err } = await supabase.auth.signInWithPassword({
+      email: cleanEmail,
+      password,
+    });
     setLoading(false);
     if (err) {
-      setError("E-mail ou senha inválidos.");
+      setError(translateAuthError(err.message));
       return;
     }
     navigate({ to: "/" });
   }
+
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
