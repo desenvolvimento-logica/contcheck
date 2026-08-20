@@ -165,12 +165,16 @@ export const resetUserPassword = createServerFn({ method: "POST" })
       password: senha,
     });
     if (aErr) {
-      failSafe(
-        aErr,
-        /weak|pwned/i.test(aErr.message ?? "")
+      console.error("[resetUserPassword]", aErr.message);
+      // Return a structured failure (instead of throwing) so the admin UI can
+      // show a message without surfacing an unhandled runtime error.
+      return {
+        ok: false as const,
+        senha: null,
+        message: /weak|pwned|compromis/i.test(aErr.message ?? "")
           ? "Esta senha é muito comum ou apareceu em vazamentos. Escolha outra."
           : "Não foi possível redefinir a senha.",
-      );
+      };
     }
 
     const { error: pErr } = await supabaseAdmin
@@ -180,7 +184,8 @@ export const resetUserPassword = createServerFn({ method: "POST" })
     if (pErr) failSafe(pErr, "Não foi possível marcar a troca obrigatória de senha.");
 
     return {
-      ok: true,
+      ok: true as const,
+      message: null,
       // Returned once to the admin. For 'custom' mode the admin already knows it;
       // for 'padrao' this is the only chance to see the freshly generated password.
       senha: data.mode === "padrao" ? senha : null,
