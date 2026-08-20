@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { markPasswordChanged } from "@/lib/analyses.functions";
+import { translateAuthError } from "@/lib/auth-errors";
 
 export const Route = createFileRoute("/_authenticated/change-password")({
   component: ChangePasswordPage,
