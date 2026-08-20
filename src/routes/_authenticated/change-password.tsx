@@ -28,8 +28,9 @@ function ChangePasswordPage() {
     const { error: err } = await supabase.auth.updateUser({ password: p1 });
     if (err) {
       setLoading(false);
-      return setError(err.message);
+      return setError(translateAuthError(err.message));
     }
+
     await mark();
     await qc.invalidateQueries({ queryKey: ["me"] });
     setLoading(false);
