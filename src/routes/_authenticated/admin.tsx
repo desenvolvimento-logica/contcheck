@@ -21,6 +21,7 @@ type UserRow = {
 };
 
 
+type CsvPerfil = "usuario" | "lider" | "coordenador";
 type CsvRow = { nome: string; email: string; perfil: string; senha_provisoria: string };
 
 function AdminPage() {
