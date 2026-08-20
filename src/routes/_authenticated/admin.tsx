@@ -79,6 +79,24 @@ function AdminPage() {
     },
   });
 
+  const singleMutation = useMutation({
+    mutationFn: (u: { nome: string; email: string; perfil: CsvPerfil; senha_provisoria: string }) =>
+      bulk({ data: { users: [u] } }),
+    onSuccess: (res) => {
+      const r = res.results[0];
+      if (r?.status === "created") {
+        toast.success("Usuário cadastrado. Ele deverá trocar a senha no primeiro acesso.");
+        setSingle({ nome: "", email: "", perfil: "usuario", senha: "" });
+        qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      } else {
+        toast.error(r?.message ?? "Não foi possível cadastrar o usuário.");
+      }
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : "Falha ao cadastrar."),
+  });
+
+
+
   const updateMutation = useMutation({
     mutationFn: (vars: { user_id: string; nome: string; email: string; perfil: "usuario" | "lider" | "coordenador" | "admin" }) =>
       update({ data: vars }),
