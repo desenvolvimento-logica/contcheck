@@ -21,6 +21,7 @@ type UserRow = {
 };
 
 
+type CsvPerfil = "usuario" | "lider" | "coordenador";
 type CsvRow = { nome: string; email: string; perfil: string; senha_provisoria: string };
 
 function AdminPage() {
@@ -39,6 +40,13 @@ function AdminPage() {
   >(null);
   const [editing, setEditing] = useState<UserRow | null>(null);
   const [resetting, setResetting] = useState<UserRow | null>(null);
+  const [single, setSingle] = useState<{ nome: string; email: string; perfil: CsvPerfil; senha: string }>({
+    nome: "",
+    email: "",
+    perfil: "usuario",
+    senha: "",
+  });
+
 
 
   if (!meLoading && me && me.role !== "admin") {
@@ -70,6 +78,24 @@ function AdminPage() {
       qc.invalidateQueries({ queryKey: ["admin", "users"] });
     },
   });
+
+  const singleMutation = useMutation({
+    mutationFn: (u: { nome: string; email: string; perfil: CsvPerfil; senha_provisoria: string }) =>
+      bulk({ data: { users: [u] } }),
+    onSuccess: (res) => {
+      const r = res.results[0];
+      if (r?.status === "created") {
+        toast.success("Usuário cadastrado. Ele deverá trocar a senha no primeiro acesso.");
+        setSingle({ nome: "", email: "", perfil: "usuario", senha: "" });
+        qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      } else {
+        toast.error(r?.message ?? "Não foi possível cadastrar o usuário.");
+      }
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : "Falha ao cadastrar."),
+  });
+
+
 
   const updateMutation = useMutation({
     mutationFn: (vars: { user_id: string; nome: string; email: string; perfil: "usuario" | "lider" | "coordenador" | "admin" }) =>
@@ -160,6 +186,69 @@ function AdminPage() {
       </div>
 
       <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-foreground">Adicionar usuário</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Cadastro individual, sem precisar de arquivo CSV.
+        </p>
+        <form
+          className="mt-4 grid gap-3 sm:grid-cols-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const nome = single.nome.trim();
+            const email = single.email.trim().toLowerCase();
+            const senha = single.senha.trim();
+            if (!nome || !email || senha.length < 6) {
+              toast.error("Preencha nome, e-mail e uma senha com ao menos 6 caracteres.");
+              return;
+            }
+            singleMutation.mutate({ nome, email, perfil: single.perfil, senha_provisoria: senha });
+          }}
+        >
+          <input
+            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+            placeholder="Nome"
+            value={single.nome}
+            onChange={(e) => setSingle((s) => ({ ...s, nome: e.target.value }))}
+          />
+          <input
+            type="email"
+            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+            placeholder="E-mail"
+            value={single.email}
+            onChange={(e) => setSingle((s) => ({ ...s, email: e.target.value }))}
+          />
+          <select
+            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+            value={single.perfil}
+            onChange={(e) =>
+              setSingle((s) => ({ ...s, perfil: e.target.value as CsvPerfil }))
+            }
+          >
+            <option value="usuario">Usuário</option>
+            <option value="lider">Líder</option>
+            <option value="coordenador">Coordenador</option>
+          </select>
+          <input
+            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+            placeholder="Senha provisória (mín. 6)"
+            value={single.senha}
+            onChange={(e) => setSingle((s) => ({ ...s, senha: e.target.value }))}
+          />
+          <div className="sm:col-span-2">
+            <button
+              type="submit"
+              disabled={singleMutation.isPending}
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+            >
+              {singleMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              Cadastrar usuário
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
+
         <h2 className="text-lg font-semibold text-foreground">Importar CSV</h2>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-muted">
