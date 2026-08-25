@@ -288,29 +288,45 @@ function LowBalanceCard({ account }: { account: AccountRow }) {
   );
 }
 
+function ExportButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+    >
+      <Download className="h-3.5 w-3.5" />
+      Exportar PDF
+    </button>
+  );
+}
+
 function Section({
   title,
   count,
+  action,
   children,
 }: {
   title: string;
   count: number;
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section>
-      <div className="mb-3 flex items-center justify-between border-b border-border pb-2">
+      <div className="mb-3 flex flex-wrap items-center gap-3 border-b border-border pb-2">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           {title}
         </h2>
         <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
           {count}
         </span>
+        {action && <div className="ml-auto">{action}</div>}
       </div>
       {children}
     </section>
   );
 }
+
 
 function EmptyCard({ message }: { message: string }) {
   return (
