@@ -213,13 +213,14 @@ function ResultView({ result, fileName }: { result: InvertedResult; fileName: st
                       </p>
                     )}
                     <dl className="mt-3 grid grid-cols-3 gap-3 text-xs">
-                      <Field label="Classificação" value={a.classification} mono />
+                      <Field label="Código" value={a.code || "—"} mono />
                       <Field
                         label="Saldo atual"
                         value={`${formatBRL(a.saldoAtualNum)} ${a.natureza ?? ""}`}
                       />
                       <Field label="Regra esperada" value={`Saldo ${a.expected}`} />
                     </dl>
+
                   </div>
                 </div>
               </div>

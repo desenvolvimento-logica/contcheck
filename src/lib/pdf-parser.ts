@@ -463,6 +463,7 @@ export function extractAllFifthLevelRows(
 // ---------- Functionality 2: Inverted balance ----------
 
 export type AccountRow = {
+  code: string;
   classification: string;
   description: string;
   saldoAtualRaw: string;
@@ -476,6 +477,15 @@ export function extractAccountRows(rows: PdfRow[]): AccountRow[] {
     const classIdx = row.tokens.findIndex(isClassification);
     if (classIdx === -1) continue;
     const classification = row.tokens[classIdx];
+    // "Código" column: last plain integer token before the classification
+    let code = "";
+    for (let i = classIdx - 1; i >= 0; i--) {
+      const t = row.tokens[i].trim();
+      if (/^\d{1,8}$/.test(t)) {
+        code = t;
+        break;
+      }
+    }
     const nums = row.tokens.filter(isNumberToken);
     if (nums.length === 0) continue;
     const last = nums[nums.length - 1];
@@ -483,6 +493,7 @@ export function extractAccountRows(rows: PdfRow[]): AccountRow[] {
     const firstNumIdx = row.tokens.findIndex(isNumberToken);
     const description = row.tokens.slice(classIdx + 1, firstNumIdx).join(" ");
     out.push({
+      code,
       classification,
       description,
       saldoAtualRaw: last,
@@ -492,6 +503,7 @@ export function extractAccountRows(rows: PdfRow[]): AccountRow[] {
   }
   return out;
 }
+
 
 export type InvertedResult = {
   inverted: Array<AccountRow & { expected: "D" | "C" }>;
