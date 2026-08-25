@@ -43,7 +43,7 @@ export function CompareLaunches({ onBack }: Props) {
       .sort((a, b) => Math.abs(b.avgVariation) - Math.abs(a.avgVariation))
       .slice(0, 10)
       .map((r) => ({
-        classification: r.classification,
+        classification: r.code || r.classification,
         description: r.description ?? "",
         avgVariation: Number.isFinite(r.avgVariation) ? r.avgVariation : 0,
       }));
@@ -187,7 +187,7 @@ function ResultTable({ result, fileName }: { result: AllClassificationsResult; f
 
     const head = [
       [
-        "Classificação",
+        "Código",
         "Descrição",
         ...result.headers,
         "Média Var.",
@@ -201,7 +201,7 @@ function ResultTable({ result, fileName }: { result: AllClassificationsResult; f
         return { content: `${formatBRL(v)}${pctStr}`, styles: {} as Record<string, unknown> };
       });
       return [
-        r.classification,
+        r.code || r.classification,
         r.description || "—",
         ...valueCells,
         `${r.avgVariation.toFixed(2)}%`,
@@ -350,7 +350,7 @@ function DraggableTable({ result }: { result: AllClassificationsResult }) {
         <thead>
           <tr>
             <th className="sticky left-0 z-30 w-[140px] min-w-[140px] bg-card px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-r border-border">
-              Classificação
+              Código
             </th>
             <th className="sticky left-[140px] z-30 w-[260px] min-w-[260px] bg-card px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-r border-border">
               Descrição
@@ -372,7 +372,7 @@ function DraggableTable({ result }: { result: AllClassificationsResult }) {
           {result.rows.map((r) => (
             <tr key={r.classification}>
               <td className="sticky left-0 z-20 w-[140px] min-w-[140px] bg-card px-4 py-3 font-mono text-xs text-foreground border-b border-r border-border">
-                {r.classification}
+                {r.code || r.classification}
               </td>
               <td className="sticky left-[140px] z-20 w-[260px] min-w-[260px] bg-card px-4 py-3 text-xs text-muted-foreground border-b border-r border-border">
                 {r.description || "—"}

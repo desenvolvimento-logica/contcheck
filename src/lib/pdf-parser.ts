@@ -306,6 +306,8 @@ export function compareVariation(
 }
 
 export type ClassificationRow = {
+  /** "Código" column value, when present in the report. */
+  code: string;
   classification: string;
   description: string;
   values: number[];
@@ -446,8 +448,24 @@ export function extractAllFifthLevelRows(
       (v) => v !== null && Number.isFinite(v) && Math.abs(v) > 30,
     );
 
+    // "Código" column: last plain integer item to the left of the classification
+    let code = "";
+    {
+      const lefts = row.items
+        .filter((it) => it.x + it.width <= classItem!.x + 0.5)
+        .sort((a, b) => b.x - a.x);
+      for (const it of lefts) {
+        const t = it.str.trim();
+        if (/^\d{1,8}$/.test(t)) {
+          code = t;
+          break;
+        }
+      }
+    }
+
     seen.add(classification);
     out.push({
+      code,
       classification,
       description,
       values,
