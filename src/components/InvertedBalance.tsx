@@ -165,9 +165,9 @@ function ResultView({ result, fileName }: { result: InvertedResult; fileName: st
       "Saldos Baixos",
       "Saldos atuais entre R$ 0,01 e R$ 9,99",
       fileName,
-      ["Classificação", "Descrição", "Saldo atual", "Natureza"],
+      ["Código", "Descrição", "Saldo atual", "Natureza"],
       result.lowBalance.map((a) => [
-        a.classification,
+        a.code || a.classification,
         a.description || "—",
         a.saldoAtualNum,
         a.natureza ?? "—",
@@ -260,8 +260,8 @@ function LowBalanceCard({ account }: { account: AccountRow }) {
         <AlertTriangle className="mt-0.5 h-5 w-5 text-warning-foreground" />
         <div className="flex-1">
           <p className="text-sm font-semibold text-foreground">
-            Atenção: saldo atual baixo identificado. Classificação:{" "}
-            <span className="font-mono">{account.classification}</span>. Saldo Atual:{" "}
+            Atenção: saldo atual baixo identificado. Código:{" "}
+            <span className="font-mono">{account.code || account.classification}</span>. Saldo Atual:{" "}
             {formatBRL(account.saldoAtualNum)} {account.natureza ?? ""}.
           </p>
           {account.description && (
