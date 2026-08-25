@@ -106,21 +106,108 @@ export function InvertedBalance({ onBack }: Props) {
         </div>
       )}
 
-      {state.kind === "done" && <ResultView result={state.result} />}
+      {state.kind === "done" && (
+        <ResultView result={state.result} fileName={file?.name ?? "relatorio.pdf"} />
+      )}
     </div>
   );
 }
 
-function ResultView({ result }: { result: InvertedResult }) {
+function buildPdf(
+  title: string,
+  fileName: string,
+  head: string[],
+  body: string[][],
+  saveAs: string,
+) {
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 8;
+
+  doc.setFontSize(14);
+  doc.text(title, margin, 12);
+  doc.setFontSize(9);
+  doc.setTextColor(90);
+  doc.text(`Arquivo: ${fileName}`, margin, 17);
+  doc.text(`${body.length} registro(s)`, margin, 21);
+  doc.text(`Gerado em ${new Date().toLocaleString("pt-BR")}`, pageWidth - margin, 21, {
+    align: "right",
+  });
+
+  autoTable(doc, {
+    startY: 25,
+    head: [head],
+    body,
+    margin: { left: margin, right: margin, top: 25, bottom: 8 },
+    styles: { fontSize: 8, cellPadding: 1.8, overflow: "linebreak" },
+    headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: "bold", fontSize: 8 },
+    columnStyles: { 0: { cellWidth: 30, font: "courier", fontSize: 8 } },
+    didDrawPage: () => {
+      const pageCount = doc.getNumberOfPages();
+      const pageCurrent = doc.getCurrentPageInfo().pageNumber;
+      doc.setFontSize(8);
+      doc.setTextColor(120);
+      doc.text(
+        `Página ${pageCurrent} de ${pageCount}`,
+        pageWidth - margin,
+        doc.internal.pageSize.getHeight() - 3,
+        { align: "right" },
+      );
+    },
+  });
+
+  doc.save(saveAs);
+}
+
+function ResultView({ result, fileName }: { result: InvertedResult; fileName: string }) {
+  const base = fileName.replace(/\.pdf$/i, "");
+
+  function exportInverted() {
+    buildPdf(
+      "Saldos com natureza invertida",
+      fileName,
+      ["Classificação", "Descrição", "Saldo atual", "Natureza", "Esperado"],
+      result.inverted.map((a) => [
+        a.classification,
+        a.description || "—",
+        formatBRL(a.saldoAtualNum),
+        a.natureza ?? "—",
+        a.expected,
+      ]),
+      `${base} - Saldos Invertidos.pdf`,
+    );
+  }
+
+  function exportLowBalance() {
+    buildPdf(
+      "Saldos atuais entre R$ 0,01 e R$ 9,99",
+      fileName,
+      ["Classificação", "Descrição", "Saldo atual", "Natureza"],
+      result.lowBalance.map((a) => [
+        a.classification,
+        a.description || "—",
+        formatBRL(a.saldoAtualNum),
+        a.natureza ?? "—",
+      ]),
+      `${base} - Saldos Baixos.pdf`,
+    );
+  }
+
   return (
     <div className="space-y-8">
       <Section
         title="Saldos com natureza invertida"
         count={result.inverted.length}
+        action={
+          result.inverted.length > 0 ? (
+            <ExportButton onClick={exportInverted} />
+          ) : null
+        }
       >
         {result.inverted.length === 0 ? (
           <EmptyCard message="Nenhum saldo invertido foi encontrado." />
         ) : (
+
           <div className="space-y-3">
             {result.inverted.map((a, i) => (
               <div
