@@ -247,7 +247,13 @@ function ResultView({ result, fileName }: { result: InvertedResult; fileName: st
       <Section
         title="Saldos atuais entre R$ 0,01 e R$ 9,99"
         count={result.lowBalance.length}
+        action={
+          result.lowBalance.length > 0 ? (
+            <ExportButton onClick={exportLowBalance} />
+          ) : null
+        }
       >
+
         {result.lowBalance.length === 0 ? (
           <EmptyCard message="Nenhum saldo atual entre R$ 0,01 e R$ 9,99 foi encontrado." />
         ) : (
