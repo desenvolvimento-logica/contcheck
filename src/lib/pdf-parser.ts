@@ -105,6 +105,7 @@ export function isNumberToken(t: string): boolean {
 
 const CLASSIFICATION = /^\d+(\.\d+){2,}$/;
 const FIFTH_LEVEL = /^\d\.\d\.\d\.\d{2}\.\d{3}$/;
+const FIFTH_LEVEL_SEARCH = /\d\.\d\.\d\.\d{2}\.\d{3}/;
 
 export function isClassification(t: string): boolean {
   return CLASSIFICATION.test(t);
@@ -375,6 +376,7 @@ export function extractAllFifthLevelRows(
   for (const row of rows) {
     let classification: string | null = null;
     let classItem: PdfItem | null = null;
+    let codeFromClassItem = "";
     for (const it of row.items) {
       const s = it.str.trim();
       if (isFifthLevelClassification(s)) {
@@ -382,10 +384,12 @@ export function extractAllFifthLevelRows(
         classItem = it;
         break;
       }
-      const match = s.split(/\s+/).find((p) => isFifthLevelClassification(p));
+      const match = s.match(FIFTH_LEVEL_SEARCH)?.[0];
       if (match) {
         classification = match;
         classItem = it;
+        const prefix = s.slice(0, s.indexOf(match)).trim();
+        codeFromClassItem = prefix.match(/\d{1,8}(?!.*\d)/)?.[0] ?? "";
         break;
       }
     }
@@ -449,16 +453,18 @@ export function extractAllFifthLevelRows(
     );
 
     // "Código" column: last plain integer item to the left of the classification
-    let code = "";
+    let code = codeFromClassItem;
     {
       const lefts = row.items
         .filter((it) => it.x + it.width <= classItem!.x + 0.5)
         .sort((a, b) => b.x - a.x);
-      for (const it of lefts) {
-        const t = it.str.trim();
-        if (/^\d{1,8}$/.test(t)) {
-          code = t;
-          break;
+      if (!code) {
+        for (const it of lefts) {
+          const t = it.str.trim();
+          if (/^\d{1,8}$/.test(t)) {
+            code = t;
+            break;
+          }
         }
       }
     }
