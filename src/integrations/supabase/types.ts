@@ -86,17 +86,17 @@ export type Database = {
       cc_user_roles: {
         Row: {
           id: string
-          role: Database["public"]["Enums"]["app_role"]
+          role: Database["public"]["Enums"]["cc_app_role"]
           user_id: string
         }
         Insert: {
           id?: string
-          role: Database["public"]["Enums"]["app_role"]
+          role: Database["public"]["Enums"]["cc_app_role"]
           user_id: string
         }
         Update: {
           id?: string
-          role?: Database["public"]["Enums"]["app_role"]
+          role?: Database["public"]["Enums"]["cc_app_role"]
           user_id?: string
         }
         Relationships: []
@@ -106,13 +106,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_user_role: {
+      cc_get_user_role: {
         Args: { _user_id: string }
-        Returns: Database["public"]["Enums"]["app_role"]
+        Returns: Database["public"]["Enums"]["cc_app_role"]
       }
     }
     Enums: {
-      app_role: "admin" | "coordenador" | "lider" | "usuario"
+      cc_app_role: "admin" | "coordenador" | "lider" | "usuario"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -240,7 +240,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "coordenador", "lider", "usuario"],
+      cc_app_role: ["admin", "coordenador", "lider", "usuario"],
     },
   },
 } as const
