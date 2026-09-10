@@ -17,7 +17,7 @@ type AnySupabase = {
 
 async function isAdminUser(supabase: AnySupabase, userId: string): Promise<boolean> {
   const { data } = await supabase
-    .from("user_roles")
+    .from("cc_user_roles")
     .select("role")
     .eq("user_id", userId)
     .eq("role", "admin")
@@ -30,7 +30,7 @@ export async function ensurePasswordChanged(supabase: AnySupabase, userId: strin
   if (await isAdminUser(supabase, userId)) return;
 
   const { data, error } = await supabase
-    .from("profiles")
+    .from("cc_profiles")
     .select("must_change_password")
     .eq("id", userId)
     .maybeSingle();

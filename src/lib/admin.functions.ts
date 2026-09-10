@@ -27,7 +27,7 @@ async function ensureAdmin(
   userId: string,
 ) {
   const { data, error } = await supabase
-    .from("user_roles")
+    .from("cc_user_roles")
     .select("role")
     .eq("user_id", userId)
     .eq("role", "admin")
@@ -66,7 +66,7 @@ export const bulkCreateUsers = createServerFn({ method: "POST" })
           continue;
         }
         await supabaseAdmin
-          .from("profiles")
+          .from("cc_profiles")
           .update({ nome: u.nome, must_change_password: true })
           .eq("id", created.user.id);
         results.push({ email: u.email, status: "created" });
@@ -83,8 +83,8 @@ export const listAllUsers = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await ensureAdmin(context.supabase as never, context.userId);
     const [{ data: profiles, error: pErr }, { data: roles, error: rErr }] = await Promise.all([
-      context.supabase.from("profiles").select("id, nome, email, must_change_password, created_at"),
-      context.supabase.from("user_roles").select("user_id, role"),
+      context.supabase.from("cc_profiles").select("id, nome, email, must_change_password, created_at"),
+      context.supabase.from("cc_user_roles").select("user_id, role"),
     ]);
     if (pErr) failSafe(pErr, "Não foi possível carregar os usuários.");
     if (rErr) failSafe(rErr, "Não foi possível carregar os perfis.");
@@ -115,13 +115,13 @@ export const updateUser = createServerFn({ method: "POST" })
     if (aErr) failSafe(aErr, "Não foi possível atualizar o e-mail do usuário.");
 
     const { error: pErr } = await supabaseAdmin
-      .from("profiles")
+      .from("cc_profiles")
       .update({ nome: data.nome, email: data.email })
       .eq("id", data.user_id);
     if (pErr) failSafe(pErr, "Não foi possível atualizar o perfil.");
 
     const { data: existing, error: rSelErr } = await supabaseAdmin
-      .from("user_roles")
+      .from("cc_user_roles")
       .select("role")
       .eq("user_id", data.user_id)
       .maybeSingle();
@@ -129,12 +129,12 @@ export const updateUser = createServerFn({ method: "POST" })
 
     if (!existing || existing.role !== data.perfil) {
       const { error: rDelErr } = await supabaseAdmin
-        .from("user_roles")
+        .from("cc_user_roles")
         .delete()
         .eq("user_id", data.user_id);
       if (rDelErr) failSafe(rDelErr, "Não foi possível atualizar o papel.");
       const { error: rInsErr } = await supabaseAdmin
-        .from("user_roles")
+        .from("cc_user_roles")
         .insert({ user_id: data.user_id, role: data.perfil });
       if (rInsErr) failSafe(rInsErr, "Não foi possível atribuir o novo papel.");
     }
@@ -178,7 +178,7 @@ export const resetUserPassword = createServerFn({ method: "POST" })
     }
 
     const { error: pErr } = await supabaseAdmin
-      .from("profiles")
+      .from("cc_profiles")
       .update({ must_change_password: true })
       .eq("id", data.user_id);
     if (pErr) failSafe(pErr, "Não foi possível marcar a troca obrigatória de senha.");

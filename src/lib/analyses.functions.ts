@@ -28,7 +28,7 @@ export const saveAnalysis = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await ensurePasswordChanged(context.supabase as never, context.userId);
     const { error, data: row } = await context.supabase
-      .from("analyses")
+      .from("cc_analyses")
       .insert({
         user_id: context.userId,
         analysis_type: "compare_launches",
@@ -52,7 +52,7 @@ export const listAnalyses = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await ensurePasswordChanged(context.supabase as never, context.userId);
     const { data, error } = await context.supabase
-      .from("analyses")
+      .from("cc_analyses")
       .select("*")
       .order("created_at", { ascending: false })
       .limit(500);
@@ -63,8 +63,8 @@ export const listAnalyses = createServerFn({ method: "GET" })
     let rolesById = new Map<string, string>();
     if (userIds.length > 0) {
       const [profilesRes, rolesRes] = await Promise.all([
-        context.supabase.from("profiles").select("id, nome, email").in("id", userIds),
-        context.supabase.from("user_roles").select("user_id, role").in("user_id", userIds),
+        context.supabase.from("cc_profiles").select("id, nome, email").in("id", userIds),
+        context.supabase.from("cc_user_roles").select("user_id, role").in("user_id", userIds),
       ]);
       if (profilesRes.data) {
         profilesById = new Map(
@@ -90,11 +90,11 @@ export const getMyProfile = createServerFn({ method: "GET" })
     // to redirect to /change-password.
     const [{ data: profile }, { data: roles }] = await Promise.all([
       context.supabase
-        .from("profiles")
+        .from("cc_profiles")
         .select("id, nome, email, must_change_password")
         .eq("id", context.userId)
         .maybeSingle(),
-      context.supabase.from("user_roles").select("role").eq("user_id", context.userId),
+      context.supabase.from("cc_user_roles").select("role").eq("user_id", context.userId),
     ]);
     const order = { admin: 1, coordenador: 2, lider: 3, usuario: 4 } as const;
     const role = (roles ?? [])
@@ -116,7 +116,7 @@ export const markPasswordChanged = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     // Whitelisted from ensurePasswordChanged — this is part of the change flow.
     const { error } = await context.supabase
-      .from("profiles")
+      .from("cc_profiles")
       .update({ must_change_password: false })
       .eq("id", context.userId);
     if (error) failSafe(error, "Não foi possível registrar a troca de senha.");
