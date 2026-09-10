@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/app-client";
 import { translateAuthError } from "@/lib/auth-errors";
 
 
@@ -24,6 +24,19 @@ function AuthPage() {
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) navigate({ to: "/" });
     });
+  }, [navigate]);
+
+  // Login automático vindo do Hub Luz.IA
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (
+        session &&
+        (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED")
+      ) {
+        navigate({ to: "/" });
+      }
+    });
+    return () => sub.subscription.unsubscribe();
   }, [navigate]);
 
   async function handleSubmit(e: React.FormEvent) {
