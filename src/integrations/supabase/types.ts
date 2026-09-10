@@ -14,7 +14,7 @@ export type Database = {
   }
   public: {
     Tables: {
-      analyses: {
+      cc_analyses: {
         Row: {
           above_limit_count: number
           analysis_type: string
@@ -59,7 +59,7 @@ export type Database = {
         }
         Relationships: []
       }
-      profiles: {
+      cc_profiles: {
         Row: {
           created_at: string
           email: string
@@ -83,7 +83,7 @@ export type Database = {
         }
         Relationships: []
       }
-      user_roles: {
+      cc_user_roles: {
         Row: {
           id: string
           role: Database["public"]["Enums"]["app_role"]
