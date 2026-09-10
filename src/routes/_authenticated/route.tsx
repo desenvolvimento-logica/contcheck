@@ -7,7 +7,7 @@ import {
   useRouter,
 } from "@tanstack/react-router";
 import { LogOut, BarChart3, Users, Shield, Home as HomeIcon, KeyRound } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/app-client";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { PatchNotesBell } from "@/components/PatchNotes";
 
