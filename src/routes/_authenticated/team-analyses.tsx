@@ -166,28 +166,22 @@ function TeamAnalysesPage() {
             <tr>
               <th className="px-4 py-3 text-left">Data</th>
               <th className="px-4 py-3 text-left">Autor</th>
-              <th className="px-4 py-3 text-left">Perfil</th>
               <th className="px-4 py-3 text-left">Tipo</th>
               <th className="px-4 py-3 text-left">Cliente</th>
-              <th className="px-4 py-3 text-left">Arquivo</th>
-              <th className="px-4 py-3 text-left">Meses</th>
-              <th className="px-4 py-3 text-right">Limite</th>
-              <th className="px-4 py-3 text-right">Classif.</th>
-              <th className="px-4 py-3 text-right">Acima do limite</th>
-              <th className="px-4 py-3 text-right">Variação média</th>
+
             </tr>
           </thead>
           <tbody>
             {q.isLoading && (
               <tr>
-                <td colSpan={11} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
                   Carregando...
                 </td>
               </tr>
             )}
             {!q.isLoading && q.isError && (
               <tr>
-                <td colSpan={11} className="px-4 py-8 text-center text-sm text-destructive">
+                <td colSpan={4} className="px-4 py-8 text-center text-sm text-destructive">
                   {String((q.error as Error)?.message ?? "").includes("PASSWORD_CHANGE_REQUIRED")
                     ? "Defina sua nova senha para liberar o histórico da equipe."
                     : "Não foi possível carregar o histórico. Atualize a página e tente novamente."}
@@ -196,7 +190,7 @@ function TeamAnalysesPage() {
             )}
             {!q.isLoading && !q.isError && rows.length === 0 && (
               <tr>
-                <td colSpan={11} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
                   Nenhuma análise encontrada.
                 </td>
               </tr>
@@ -211,30 +205,10 @@ function TeamAnalysesPage() {
                   {new Date(a.created_at).toLocaleString("pt-BR")}
                 </td>
                 <td className="px-4 py-2">{a.author.nome || a.author.email}</td>
-                <td className="px-4 py-2 capitalize">{a.role}</td>
                 <td className="px-4 py-2 whitespace-nowrap">{typeLabel(a.analysis_type)}</td>
                 <td className="px-4 py-2">{a.client_name || "—"}</td>
-                <td className="px-4 py-2">{a.file_name}</td>
-                <td className="px-4 py-2 text-xs">{(a.months ?? []).join(" / ")}</td>
-                <td className="px-4 py-2 text-right tabular-nums">
-                  {a.analysis_type === "inverted_balance"
-                    ? "—"
-                    : `${Number(a.threshold).toFixed(0)}%`}
-                </td>
-                <td className="px-4 py-2 text-right tabular-nums">{a.total_classifications}</td>
-                <td
-                  className={`px-4 py-2 text-right tabular-nums ${
-                    a.above_limit_count > 0 ? "text-warning-foreground font-semibold" : ""
-                  }`}
-                >
-                  {a.above_limit_count}
-                </td>
-                <td className="px-4 py-2 text-right tabular-nums">
-                  {a.analysis_type === "inverted_balance"
-                    ? "—"
-                    : `${Number(a.avg_variation).toFixed(2)}%`}
-                </td>
               </tr>
+
             ))}
           </tbody>
         </table>
