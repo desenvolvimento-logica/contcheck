@@ -8,7 +8,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
-const CURRENT_VERSION = "2026-06-19";
+const CURRENT_VERSION = "2026-09-15";
 const STORAGE_KEY = "patch-notes-seen";
 
 type Entry = {
@@ -17,6 +17,26 @@ type Entry = {
 };
 
 const SECTIONS: { heading: string; entries: Entry[] }[] = [
+  {
+    heading: "✨ Novidades de 15/09/2026",
+    entries: [
+      {
+        title: "Análises da equipe mais claras",
+        items: [
+          "A tabela agora mostra apenas o essencial: Data, Autor, Tipo, Cliente e Período.",
+          "O período aparece resumido, só com o mês inicial e o mês final.",
+          "O relatório exportado em Excel segue o mesmo formato da tela.",
+        ],
+      },
+      {
+        title: "Saldo invertido",
+        items: [
+          "Correção: as análises de saldo invertido agora são sempre salvas no histórico.",
+          "Se algo impedir o salvamento, você recebe um aviso na tela em vez de perder a análise.",
+        ],
+      },
+    ],
+  },
   {
     heading: "🔐 Acesso e segurança",
     entries: [
