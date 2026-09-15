@@ -205,24 +205,9 @@ function TeamAnalysesPage() {
                   {new Date(a.created_at).toLocaleString("pt-BR")}
                 </td>
                 <td className="px-4 py-2">{a.author.nome || a.author.email}</td>
-                <td className="px-4 py-2 capitalize">{a.role}</td>
                 <td className="px-4 py-2 whitespace-nowrap">{typeLabel(a.analysis_type)}</td>
                 <td className="px-4 py-2">{a.client_name || "—"}</td>
-                <td className="px-4 py-2">{a.file_name}</td>
-                <td className="px-4 py-2 text-xs">{(a.months ?? []).join(" / ")}</td>
-                <td className="px-4 py-2 text-right tabular-nums">
-                  {a.analysis_type === "inverted_balance"
-                    ? "—"
-                    : `${Number(a.threshold).toFixed(0)}%`}
-                </td>
-                <td className="px-4 py-2 text-right tabular-nums">{a.total_classifications}</td>
-                <td
-                  className={`px-4 py-2 text-right tabular-nums ${
-                    a.above_limit_count > 0 ? "text-warning-foreground font-semibold" : ""
-                  }`}
-                >
-                  {a.above_limit_count}
-                </td>
+
                 <td className="px-4 py-2 text-right tabular-nums">
                   {a.analysis_type === "inverted_balance"
                     ? "—"
