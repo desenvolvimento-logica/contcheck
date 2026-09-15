@@ -49,6 +49,20 @@ export function CompareLaunches({ onBack }: Props) {
       }));
     persist({
       data: {
+        analysisType: "compare_launches",
+        details: {
+          headers: state.result.headers,
+          threshold: THRESHOLD,
+          rows: state.result.rows.slice(0, 600).map((r) => ({
+            code: r.code,
+            classification: r.classification,
+            description: r.description ?? "",
+            values: r.values,
+            variations: r.variations,
+            avgVariation: Number.isFinite(r.avgVariation) ? r.avgVariation : 0,
+            hasDivergence: r.hasDivergence,
+          })),
+        },
         fileName: state.fileName,
         clientName: state.result.companyName,
         months: state.result.headers,
