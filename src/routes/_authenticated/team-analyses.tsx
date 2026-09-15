@@ -38,6 +38,13 @@ function typeLabel(t: string) {
   return TYPE_LABELS[t] ?? t;
 }
 
+function periodLabel(months?: string[] | null) {
+  const list = (months ?? []).filter(Boolean);
+  if (list.length === 0) return "—";
+  if (list.length === 1) return list[0];
+  return `${list[0]} a ${list[list.length - 1]}`;
+}
+
 function TeamAnalysesPage() {
   const { data: me } = useCurrentUser();
   const list = useServerFn(listAnalyses);
@@ -82,16 +89,17 @@ function TeamAnalysesPage() {
       [`Gerado em ${new Date().toLocaleString("pt-BR")}`],
       [`${rows.length} análise(s)`],
       [],
-      ["Colaborador", "Data da análise", "Cliente", "Tipo da análise"],
+      ["Colaborador", "Data da análise", "Cliente", "Tipo da análise", "Período"],
       ...rows.map((a) => [
         a.author.nome || a.author.email,
         new Date(a.created_at).toLocaleString("pt-BR"),
         a.client_name || "—",
         typeLabel(a.analysis_type),
+        periodLabel(a.months),
       ]),
     ];
     const sheet = XLSX.utils.aoa_to_sheet(aoa);
-    sheet["!cols"] = [{ wch: 32 }, { wch: 22 }, { wch: 38 }, { wch: 26 }];
+    sheet["!cols"] = [{ wch: 32 }, { wch: 22 }, { wch: 38 }, { wch: 26 }, { wch: 20 }];
     const book = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(book, sheet, "Análises");
     XLSX.writeFile(book, "Relatorio de Analises.xlsx");
