@@ -3,6 +3,7 @@ import { AlertTriangle, Loader2, ArrowLeft, Download } from "lucide-react";
 import { CompareSummaryHeader, DraggableTable } from "./analysis-views";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
 import { useServerFn } from "@tanstack/react-start";
 import { UploadArea } from "./UploadArea";
 import {
