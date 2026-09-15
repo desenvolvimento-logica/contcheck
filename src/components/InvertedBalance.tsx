@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, Loader2, ArrowLeft, Download } from "lucide-react";
+import { AlertTriangle, Loader2, ArrowLeft, Download } from "lucide-react";
+import { InvertedSections } from "./analysis-views";
 import * as XLSX from "xlsx";
 import { useServerFn } from "@tanstack/react-start";
 
