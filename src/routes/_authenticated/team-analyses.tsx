@@ -112,7 +112,16 @@ function TeamAnalysesPage() {
                 </td>
               </tr>
             )}
-            {!q.isLoading && rows.length === 0 && (
+            {!q.isLoading && q.isError && (
+              <tr>
+                <td colSpan={10} className="px-4 py-8 text-center text-sm text-destructive">
+                  {String((q.error as Error)?.message ?? "").includes("PASSWORD_CHANGE_REQUIRED")
+                    ? "Defina sua nova senha para liberar o histórico da equipe."
+                    : "Não foi possível carregar o histórico. Atualize a página e tente novamente."}
+                </td>
+              </tr>
+            )}
+            {!q.isLoading && !q.isError && rows.length === 0 && (
               <tr>
                 <td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">
                   Nenhuma análise encontrada.
