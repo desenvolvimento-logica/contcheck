@@ -1,0 +1,1 @@
+ALTER TABLE public.cc_analyses ADD COLUMN IF NOT EXISTS details jsonb NOT NULL DEFAULT '{}'::jsonb;
