@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/app-client";
+import { supabase } from "@/integrations/supabase/client";
 import { translateAuthError } from "@/lib/auth-errors";
 
 
