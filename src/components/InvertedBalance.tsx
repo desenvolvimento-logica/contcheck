@@ -226,26 +226,6 @@ function ResultView({ result, fileName }: { result: InvertedResult; fileName: st
   );
 }
 
-function LowBalanceCard({ account }: { account: AccountRow }) {
-  return (
-    <div className="rounded-lg border-l-4 border-warning bg-card p-5 shadow-sm">
-      <div className="flex items-start gap-3">
-        <AlertTriangle className="mt-0.5 h-5 w-5 text-warning-foreground" />
-        <div className="flex-1">
-          <p className="text-sm font-semibold text-foreground">
-            Atenção: saldo atual baixo identificado. Código:{" "}
-            <span className="font-mono">{account.code || account.classification}</span>. Saldo Atual:{" "}
-            {formatBRL(account.saldoAtualNum)} {account.natureza ?? ""}.
-          </p>
-          {account.description && (
-            <p className="mt-1 text-xs text-muted-foreground">{account.description}</p>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function ExportButton({ onClick }: { onClick: () => void }) {
   return (
     <button
@@ -255,55 +235,5 @@ function ExportButton({ onClick }: { onClick: () => void }) {
       <Download className="h-3.5 w-3.5" />
       Exportar Excel
     </button>
-  );
-}
-
-function Section({
-  title,
-  count,
-  action,
-  children,
-}: {
-  title: string;
-  count: number;
-  action?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <section>
-      <div className="mb-3 flex flex-wrap items-center gap-3 border-b border-border pb-2">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          {title}
-        </h2>
-        <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-          {count}
-        </span>
-        {action && <div className="ml-auto">{action}</div>}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-
-function EmptyCard({ message }: { message: string }) {
-  return (
-    <div className="flex items-start gap-3 rounded-lg border border-border bg-card p-5 shadow-sm">
-      <CheckCircle2 className="mt-0.5 h-5 w-5 text-success" />
-      <p className="text-sm text-foreground">{message}</p>
-    </div>
-  );
-}
-
-function Field({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div>
-      <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">
-        {label}
-      </dt>
-      <dd className={`mt-0.5 text-xs font-medium text-foreground ${mono ? "font-mono" : ""}`}>
-        {value}
-      </dd>
-    </div>
   );
 }
