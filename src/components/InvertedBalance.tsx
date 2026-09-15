@@ -10,8 +10,6 @@ import {
   extractAccountRows,
   extractCompanyName,
   extractRows,
-  formatBRL,
-  type AccountRow,
   type InvertedResult,
 } from "@/lib/pdf-parser";
 import { saveAnalysis } from "@/lib/analyses.functions";
