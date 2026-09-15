@@ -176,20 +176,22 @@ function TeamAnalysesPage() {
               <th className="px-4 py-3 text-left">Autor</th>
               <th className="px-4 py-3 text-left">Tipo</th>
               <th className="px-4 py-3 text-left">Cliente</th>
+              <th className="px-4 py-3 text-left">Período</th>
+
 
             </tr>
           </thead>
           <tbody>
             {q.isLoading && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                   Carregando...
                 </td>
               </tr>
             )}
             {!q.isLoading && q.isError && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-sm text-destructive">
+                <td colSpan={5} className="px-4 py-8 text-center text-sm text-destructive">
                   {String((q.error as Error)?.message ?? "").includes("PASSWORD_CHANGE_REQUIRED")
                     ? "Defina sua nova senha para liberar o histórico da equipe."
                     : "Não foi possível carregar o histórico. Atualize a página e tente novamente."}
@@ -215,6 +217,7 @@ function TeamAnalysesPage() {
                 <td className="px-4 py-2">{a.author.nome || a.author.email}</td>
                 <td className="px-4 py-2 whitespace-nowrap">{typeLabel(a.analysis_type)}</td>
                 <td className="px-4 py-2">{a.client_name || "—"}</td>
+                <td className="px-4 py-2 whitespace-nowrap">{periodLabel(a.months)}</td>
               </tr>
 
             ))}
