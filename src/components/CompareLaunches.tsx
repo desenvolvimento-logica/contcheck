@@ -277,161 +277,22 @@ function ResultTable({ result, fileName }: { result: AllClassificationsResult; f
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
-        {divergentCount > 0 ? (
-          <>
-            <AlertTriangle className="h-5 w-5 text-warning-foreground" />
-            <p className="text-sm text-foreground">
-              <span className="font-semibold">{divergentCount}</span> de{" "}
-              <span className="font-semibold">{result.rows.length}</span> classificações
-              apresentaram variação superior a {THRESHOLD}% em relação ao mês anterior.
-            </p>
-          </>
-        ) : (
-          <>
-            <CheckCircle2 className="h-5 w-5 text-success" />
-            <p className="text-sm text-foreground">
-              Nenhuma variação acima de {THRESHOLD}% entre meses para as{" "}
-              {result.rows.length} classificações analisadas.
-            </p>
-          </>
-        )}
-        <button
-          onClick={exportPdf}
-          className="ml-auto inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
-        >
-          <Download className="h-3.5 w-3.5" />
-          Exportar PDF
-        </button>
-      </div>
+      <CompareSummaryHeader
+        divergentCount={divergentCount}
+        total={result.rows.length}
+        threshold={THRESHOLD}
+        action={
+          <button
+            onClick={exportPdf}
+            className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Exportar PDF
+          </button>
+        }
+      />
 
-      <DraggableTable result={result} />
-    </div>
-  );
-}
-
-function DraggableTable({ result }: { result: AllClassificationsResult }) {
-  const scrollerRef = useRef<HTMLDivElement | null>(null);
-  const dragState = useRef<{ startX: number; startScroll: number; active: boolean }>({
-    startX: 0,
-    startScroll: 0,
-    active: false,
-  });
-  const [dragging, setDragging] = useState(false);
-
-  function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    const el = scrollerRef.current;
-    if (!el) return;
-    // Don't hijack clicks on interactive children
-    const target = e.target as HTMLElement;
-    if (target.closest("button, a, input, select, textarea")) return;
-    dragState.current = {
-      startX: e.clientX,
-      startScroll: el.scrollLeft,
-      active: true,
-    };
-    el.setPointerCapture(e.pointerId);
-    setDragging(true);
-  }
-
-  function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
-    if (!dragState.current.active) return;
-    const el = scrollerRef.current;
-    if (!el) return;
-    el.scrollLeft = dragState.current.startScroll - (e.clientX - dragState.current.startX);
-  }
-
-  function endDrag(e: React.PointerEvent<HTMLDivElement>) {
-    if (!dragState.current.active) return;
-    dragState.current.active = false;
-    setDragging(false);
-    const el = scrollerRef.current;
-    if (el && el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
-  }
-
-  return (
-    <div
-      ref={scrollerRef}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={endDrag}
-      onPointerCancel={endDrag}
-      className={`overflow-x-auto rounded-lg border border-border bg-card shadow-sm select-none ${
-        dragging ? "cursor-grabbing" : "cursor-grab"
-      }`}
-    >
-      <table className="w-full min-w-[720px] border-separate border-spacing-0 text-sm">
-        <thead>
-          <tr>
-            <th className="sticky left-0 z-30 w-[140px] min-w-[140px] bg-card px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-r border-border">
-              Código
-            </th>
-            <th className="sticky left-[140px] z-30 w-[260px] min-w-[260px] bg-card px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-r border-border">
-              Descrição
-            </th>
-            {result.headers.map((h) => (
-              <th
-                key={h}
-                className="bg-muted/40 px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border"
-              >
-                {h}
-              </th>
-            ))}
-            <th className="bg-muted/40 px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
-              Média de Variação
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {result.rows.map((r) => (
-            <tr key={r.classification}>
-              <td className="sticky left-0 z-20 w-[140px] min-w-[140px] bg-card px-4 py-3 font-mono text-xs text-foreground border-b border-r border-border">
-                {r.code || r.classification}
-              </td>
-              <td className="sticky left-[140px] z-20 w-[260px] min-w-[260px] bg-card px-4 py-3 text-xs text-muted-foreground border-b border-r border-border">
-                {r.description || "—"}
-              </td>
-
-              {r.values.map((v, i) => {
-                const pct = r.variations[i];
-                const divergent =
-                  pct !== null && Number.isFinite(pct) && Math.abs(pct) > THRESHOLD;
-                return (
-                  <td
-                    key={i}
-                    className={`px-4 py-3 text-right tabular-nums border-b border-border ${
-                      divergent
-                        ? "bg-warning/20 text-warning-foreground font-semibold"
-                        : "text-foreground"
-                    }`}
-                    title={pct !== null ? `Variação: ${formatPct(pct)}` : undefined}
-                  >
-                    <div>{formatBRL(v)}</div>
-                    {pct !== null && (
-                      <div
-                        className={`text-[10px] ${
-                          divergent ? "text-warning-foreground" : "text-muted-foreground"
-                        }`}
-                      >
-                        {formatPct(pct)}
-                      </div>
-                    )}
-                  </td>
-                );
-              })}
-              <td
-                className={`px-4 py-3 text-right tabular-nums border-b border-border ${
-                  r.hasDivergence
-                    ? "text-warning-foreground font-semibold"
-                    : "text-foreground"
-                }`}
-              >
-                {r.avgVariation.toFixed(2)}%
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <DraggableTable headers={result.headers} rows={result.rows} threshold={THRESHOLD} />
     </div>
   );
 }
