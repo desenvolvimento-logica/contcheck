@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { AlertTriangle, Loader2, ArrowLeft, Download } from "lucide-react";
 import { InvertedSections } from "./analysis-views";
 import * as XLSX from "xlsx";
@@ -27,33 +27,6 @@ export function InvertedBalance({ onBack }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [state, setState] = useState<State>({ kind: "idle" });
   const persist = useServerFn(saveAnalysis);
-  const persistedFor = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (state.kind !== "done") return;
-    const key = `${state.fileName}::${state.companyName}::${state.result.inverted.length}::${state.result.lowBalance.length}`;
-    if (persistedFor.current === key) return;
-    persistedFor.current = key;
-    persist({
-      data: {
-        analysisType: "inverted_balance",
-        fileName: state.fileName,
-        clientName: state.companyName,
-        months: [],
-        threshold: 0,
-        totalClassifications: state.result.inverted.length + state.result.lowBalance.length,
-        aboveLimitCount: state.result.inverted.length,
-        avgVariation: 0,
-        topClassifications: [],
-        details: {
-          inverted: state.result.inverted.slice(0, 500),
-          lowBalance: state.result.lowBalance.slice(0, 500),
-        },
-      },
-    }).catch((err) => {
-      console.error("[analyses] save failed", err);
-    });
-  }, [state, persist]);
 
   async function process(f: File) {
     setState({ kind: "processing" });
@@ -77,6 +50,23 @@ export function InvertedBalance({ onBack }: Props) {
         return;
       }
       const result = analyzeInverted(accounts);
+      await persist({
+        data: {
+          analysisType: "inverted_balance",
+          fileName: f.name,
+          clientName: companyName,
+          months: [],
+          threshold: 0,
+          totalClassifications: result.inverted.length + result.lowBalance.length,
+          aboveLimitCount: result.inverted.length,
+          avgVariation: 0,
+          topClassifications: [],
+          details: {
+            inverted: result.inverted.slice(0, 500),
+            lowBalance: result.lowBalance.slice(0, 500),
+          },
+        },
+      });
       setState({ kind: "done", result, fileName: f.name, companyName });
     } catch (e) {
       setState({
