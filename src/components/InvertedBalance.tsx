@@ -217,78 +217,12 @@ function ResultView({ result, fileName }: { result: InvertedResult; fileName: st
 
 
   return (
-    <div className="space-y-8">
-      <Section
-        title="Saldos com natureza invertida"
-        count={result.inverted.length}
-        action={
-          result.inverted.length > 0 ? (
-            <ExportButton onClick={exportInverted} />
-          ) : null
-        }
-      >
-        {result.inverted.length === 0 ? (
-          <EmptyCard message="Nenhum saldo invertido foi encontrado." />
-        ) : (
-
-          <div className="space-y-3">
-            {result.inverted.map((a, i) => (
-              <div
-                key={`${a.classification}-${i}`}
-                className="rounded-lg border-l-4 border-warning bg-card p-5 shadow-sm"
-              >
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="mt-0.5 h-5 w-5 text-warning-foreground" />
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-foreground">
-                      Divergência encontrada: a classificação{" "}
-                      <span className="font-mono">{a.classification}</span> deveria
-                      terminar com saldo {a.expected}, mas o Saldo Atual encontrado
-                      foi {formatBRL(a.saldoAtualNum)} {a.natureza}.
-                    </p>
-                    {a.description && (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {a.description}
-                      </p>
-                    )}
-                    <dl className="mt-3 grid grid-cols-3 gap-3 text-xs">
-                      <Field label="Código" value={a.code || "—"} mono />
-                      <Field
-                        label="Saldo atual"
-                        value={`${formatBRL(a.saldoAtualNum)} ${a.natureza ?? ""}`}
-                      />
-                      <Field label="Regra esperada" value={`Saldo ${a.expected}`} />
-                    </dl>
-
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Section>
-
-      <Section
-        title="Saldos atuais entre R$ 0,01 e R$ 9,99"
-        count={result.lowBalance.length}
-        action={
-          result.lowBalance.length > 0 ? (
-            <ExportButton onClick={exportLowBalance} />
-          ) : null
-        }
-      >
-
-        {result.lowBalance.length === 0 ? (
-          <EmptyCard message="Nenhum saldo atual entre R$ 0,01 e R$ 9,99 foi encontrado." />
-        ) : (
-          <div className="space-y-3">
-            {result.lowBalance.map((a, i) => (
-              <LowBalanceCard key={`${a.classification}-${i}`} account={a} />
-            ))}
-          </div>
-        )}
-      </Section>
-    </div>
+    <InvertedSections
+      inverted={result.inverted}
+      lowBalance={result.lowBalance}
+      invertedAction={<ExportButton onClick={exportInverted} />}
+      lowBalanceAction={<ExportButton onClick={exportLowBalance} />}
+    />
   );
 }
 
