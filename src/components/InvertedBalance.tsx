@@ -1,16 +1,19 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, Loader2, ArrowLeft, Download } from "lucide-react";
 import * as XLSX from "xlsx";
+import { useServerFn } from "@tanstack/react-start";
 
 import { UploadArea } from "./UploadArea";
 import {
   analyzeInverted,
   extractAccountRows,
+  extractCompanyName,
   extractRows,
   formatBRL,
   type AccountRow,
   type InvertedResult,
 } from "@/lib/pdf-parser";
+import { saveAnalysis } from "@/lib/analyses.functions";
 
 
 type Props = { onBack: () => void };
@@ -19,11 +22,39 @@ type State =
   | { kind: "idle" }
   | { kind: "processing" }
   | { kind: "error"; message: string }
-  | { kind: "done"; result: InvertedResult };
+  | { kind: "done"; result: InvertedResult; fileName: string; companyName: string };
 
 export function InvertedBalance({ onBack }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [state, setState] = useState<State>({ kind: "idle" });
+  const persist = useServerFn(saveAnalysis);
+  const persistedFor = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (state.kind !== "done") return;
+    const key = `${state.fileName}::${state.companyName}::${state.result.inverted.length}::${state.result.lowBalance.length}`;
+    if (persistedFor.current === key) return;
+    persistedFor.current = key;
+    persist({
+      data: {
+        analysisType: "inverted_balance",
+        fileName: state.fileName,
+        clientName: state.companyName,
+        months: [],
+        threshold: 0,
+        totalClassifications: state.result.inverted.length + state.result.lowBalance.length,
+        aboveLimitCount: state.result.inverted.length,
+        avgVariation: 0,
+        topClassifications: [],
+        details: {
+          inverted: state.result.inverted.slice(0, 500),
+          lowBalance: state.result.lowBalance.slice(0, 500),
+        },
+      },
+    }).catch((err) => {
+      console.error("[analyses] save failed", err);
+    });
+  }, [state, persist]);
 
   async function process(f: File) {
     setState({ kind: "processing" });
@@ -38,8 +69,16 @@ export function InvertedBalance({ onBack }: Props) {
         });
         return;
       }
+      const companyName = extractCompanyName(rows);
+      if (!companyName) {
+        setState({
+          kind: "error",
+          message: 'Não foi possível localizar o nome da empresa no PDF (campo "Empresa:").',
+        });
+        return;
+      }
       const result = analyzeInverted(accounts);
-      setState({ kind: "done", result });
+      setState({ kind: "done", result, fileName: f.name, companyName });
     } catch (e) {
       setState({
         kind: "error",
