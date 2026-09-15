@@ -172,11 +172,6 @@ export function CompareLaunches({ onBack }: Props) {
   );
 }
 
-function formatPct(p: number | null): string {
-  if (p === null) return "—";
-  if (!Number.isFinite(p)) return "∞";
-  return `${p >= 0 ? "+" : ""}${p.toFixed(2)}%`;
-}
 
 function ResultTable({ result, fileName }: { result: AllClassificationsResult; fileName: string }) {
   const divergentCount = result.rows.filter((r) => r.hasDivergence).length;
