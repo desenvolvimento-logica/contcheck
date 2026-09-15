@@ -38,6 +38,13 @@ function typeLabel(t: string) {
   return TYPE_LABELS[t] ?? t;
 }
 
+function periodLabel(months?: string[] | null) {
+  const list = (months ?? []).filter(Boolean);
+  if (list.length === 0) return "—";
+  if (list.length === 1) return list[0];
+  return `${list[0]} a ${list[list.length - 1]}`;
+}
+
 function TeamAnalysesPage() {
   const { data: me } = useCurrentUser();
   const list = useServerFn(listAnalyses);
@@ -82,16 +89,17 @@ function TeamAnalysesPage() {
       [`Gerado em ${new Date().toLocaleString("pt-BR")}`],
       [`${rows.length} análise(s)`],
       [],
-      ["Colaborador", "Data da análise", "Cliente", "Tipo da análise"],
+      ["Colaborador", "Data da análise", "Cliente", "Tipo da análise", "Período"],
       ...rows.map((a) => [
         a.author.nome || a.author.email,
         new Date(a.created_at).toLocaleString("pt-BR"),
         a.client_name || "—",
         typeLabel(a.analysis_type),
+        periodLabel(a.months),
       ]),
     ];
     const sheet = XLSX.utils.aoa_to_sheet(aoa);
-    sheet["!cols"] = [{ wch: 32 }, { wch: 22 }, { wch: 38 }, { wch: 26 }];
+    sheet["!cols"] = [{ wch: 32 }, { wch: 22 }, { wch: 38 }, { wch: 26 }, { wch: 20 }];
     const book = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(book, sheet, "Análises");
     XLSX.writeFile(book, "Relatorio de Analises.xlsx");
@@ -168,20 +176,22 @@ function TeamAnalysesPage() {
               <th className="px-4 py-3 text-left">Autor</th>
               <th className="px-4 py-3 text-left">Tipo</th>
               <th className="px-4 py-3 text-left">Cliente</th>
+              <th className="px-4 py-3 text-left">Período</th>
+
 
             </tr>
           </thead>
           <tbody>
             {q.isLoading && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                   Carregando...
                 </td>
               </tr>
             )}
             {!q.isLoading && q.isError && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-sm text-destructive">
+                <td colSpan={5} className="px-4 py-8 text-center text-sm text-destructive">
                   {String((q.error as Error)?.message ?? "").includes("PASSWORD_CHANGE_REQUIRED")
                     ? "Defina sua nova senha para liberar o histórico da equipe."
                     : "Não foi possível carregar o histórico. Atualize a página e tente novamente."}
@@ -190,7 +200,7 @@ function TeamAnalysesPage() {
             )}
             {!q.isLoading && !q.isError && rows.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                   Nenhuma análise encontrada.
                 </td>
               </tr>
@@ -207,6 +217,7 @@ function TeamAnalysesPage() {
                 <td className="px-4 py-2">{a.author.nome || a.author.email}</td>
                 <td className="px-4 py-2 whitespace-nowrap">{typeLabel(a.analysis_type)}</td>
                 <td className="px-4 py-2">{a.client_name || "—"}</td>
+                <td className="px-4 py-2 whitespace-nowrap">{periodLabel(a.months)}</td>
               </tr>
 
             ))}
