@@ -3,6 +3,7 @@ import { AlertTriangle, Loader2, ArrowLeft, Download } from "lucide-react";
 import { CompareSummaryHeader, DraggableTable } from "./analysis-views";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
 import { useServerFn } from "@tanstack/react-start";
 import { UploadArea } from "./UploadArea";
 import {
@@ -271,6 +272,45 @@ function ResultTable({ result, fileName }: { result: AllClassificationsResult; f
     doc.save(`${base} - Comparativo.pdf`);
   }
 
+  function exportXlsx() {
+    const head = [
+      "Código",
+      "Descrição",
+      ...result.headers.flatMap((h) => [h, `${h} Var. %`]),
+      "Média Var. %",
+    ];
+
+    const body = result.rows.map((r) => [
+      r.code || r.classification,
+      r.description || "—",
+      ...r.values.flatMap((v, i) => {
+        const pct = r.variations[i];
+        return [v, pct === null || !Number.isFinite(pct) ? "" : Number(pct.toFixed(2))];
+      }),
+      Number.isFinite(r.avgVariation) ? Number(r.avgVariation.toFixed(2)) : 0,
+    ]);
+
+    const aoa: (string | number)[][] = [
+      ["Comparativo de Lançamentos Contábeis"],
+      [`Arquivo: ${fileName}`],
+      [`Limite de variação: ${THRESHOLD}%`],
+      [`${divergentCount} de ${result.rows.length} classificações acima do limite`],
+      [`Gerado em ${new Date().toLocaleString("pt-BR")}`],
+      [],
+      head,
+      ...body,
+    ];
+
+    const sheet = XLSX.utils.aoa_to_sheet(aoa);
+    sheet["!cols"] = head.map((h, i) =>
+      i === 1 ? { wch: 45 } : { wch: Math.max(14, h.length + 3) },
+    );
+    const book = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(book, sheet, "Comparativo");
+    const base = fileName.replace(/\.pdf$/i, "");
+    XLSX.writeFile(book, `${base} - Comparativo.xlsx`);
+  }
+
   return (
     <div className="space-y-4">
       <CompareSummaryHeader
@@ -278,13 +318,22 @@ function ResultTable({ result, fileName }: { result: AllClassificationsResult; f
         total={result.rows.length}
         threshold={THRESHOLD}
         action={
-          <button
-            onClick={exportPdf}
-            className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
-          >
-            <Download className="h-3.5 w-3.5" />
-            Exportar PDF
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={exportPdf}
+              className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Exportar PDF
+            </button>
+            <button
+              onClick={exportXlsx}
+              className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Exportar Excel
+            </button>
+          </div>
         }
       />
 
