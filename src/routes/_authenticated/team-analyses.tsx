@@ -207,12 +207,8 @@ function TeamAnalysesPage() {
                 <td className="px-4 py-2">{a.author.nome || a.author.email}</td>
                 <td className="px-4 py-2 whitespace-nowrap">{typeLabel(a.analysis_type)}</td>
                 <td className="px-4 py-2">{a.client_name || "—"}</td>
+              </tr>
 
-                <td className="px-4 py-2 text-right tabular-nums">
-                  {a.analysis_type === "inverted_balance"
-                    ? "—"
-                    : `${Number(a.avg_variation).toFixed(2)}%`}
-                </td>
               </tr>
             ))}
           </tbody>
