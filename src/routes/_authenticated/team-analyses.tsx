@@ -209,7 +209,6 @@ function TeamAnalysesPage() {
                 <td className="px-4 py-2">{a.client_name || "—"}</td>
               </tr>
 
-              </tr>
             ))}
           </tbody>
         </table>
