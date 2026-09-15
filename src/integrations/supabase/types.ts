@@ -21,6 +21,7 @@ export type Database = {
           avg_variation: number
           client_name: string
           created_at: string
+          details: Json
           file_name: string
           id: string
           months: string[]
@@ -35,6 +36,7 @@ export type Database = {
           avg_variation?: number
           client_name?: string
           created_at?: string
+          details?: Json
           file_name: string
           id?: string
           months?: string[]
@@ -49,6 +51,7 @@ export type Database = {
           avg_variation?: number
           client_name?: string
           created_at?: string
+          details?: Json
           file_name?: string
           id?: string
           months?: string[]

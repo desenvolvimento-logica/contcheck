@@ -4,6 +4,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { ensurePasswordChanged, failSafe } from "@/lib/server-helpers";
 
 const saveSchema = z.object({
+  analysisType: z.enum(["compare_launches", "inverted_balance"]).default("compare_launches"),
+  details: z.unknown().optional(),
   fileName: z.string().min(1).max(255),
   clientName: z.string().trim().min(1, "Nome do cliente é obrigatório").max(255),
   months: z.array(z.string().max(40)).max(24),
@@ -31,7 +33,8 @@ export const saveAnalysis = createServerFn({ method: "POST" })
       .from("cc_analyses")
       .insert({
         user_id: context.userId,
-        analysis_type: "compare_launches",
+        analysis_type: data.analysisType,
+        details: (data.details ?? {}) as never,
         file_name: data.fileName,
         client_name: data.clientName ?? "",
         months: data.months,

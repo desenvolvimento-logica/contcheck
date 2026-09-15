@@ -1,16 +1,18 @@
-import { useState } from "react";
-import { AlertTriangle, CheckCircle2, Loader2, ArrowLeft, Download } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { AlertTriangle, Loader2, ArrowLeft, Download } from "lucide-react";
+import { InvertedSections } from "./analysis-views";
 import * as XLSX from "xlsx";
+import { useServerFn } from "@tanstack/react-start";
 
 import { UploadArea } from "./UploadArea";
 import {
   analyzeInverted,
   extractAccountRows,
+  extractCompanyName,
   extractRows,
-  formatBRL,
-  type AccountRow,
   type InvertedResult,
 } from "@/lib/pdf-parser";
+import { saveAnalysis } from "@/lib/analyses.functions";
 
 
 type Props = { onBack: () => void };
@@ -19,11 +21,39 @@ type State =
   | { kind: "idle" }
   | { kind: "processing" }
   | { kind: "error"; message: string }
-  | { kind: "done"; result: InvertedResult };
+  | { kind: "done"; result: InvertedResult; fileName: string; companyName: string };
 
 export function InvertedBalance({ onBack }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [state, setState] = useState<State>({ kind: "idle" });
+  const persist = useServerFn(saveAnalysis);
+  const persistedFor = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (state.kind !== "done") return;
+    const key = `${state.fileName}::${state.companyName}::${state.result.inverted.length}::${state.result.lowBalance.length}`;
+    if (persistedFor.current === key) return;
+    persistedFor.current = key;
+    persist({
+      data: {
+        analysisType: "inverted_balance",
+        fileName: state.fileName,
+        clientName: state.companyName,
+        months: [],
+        threshold: 0,
+        totalClassifications: state.result.inverted.length + state.result.lowBalance.length,
+        aboveLimitCount: state.result.inverted.length,
+        avgVariation: 0,
+        topClassifications: [],
+        details: {
+          inverted: state.result.inverted.slice(0, 500),
+          lowBalance: state.result.lowBalance.slice(0, 500),
+        },
+      },
+    }).catch((err) => {
+      console.error("[analyses] save failed", err);
+    });
+  }, [state, persist]);
 
   async function process(f: File) {
     setState({ kind: "processing" });
@@ -38,8 +68,16 @@ export function InvertedBalance({ onBack }: Props) {
         });
         return;
       }
+      const companyName = extractCompanyName(rows);
+      if (!companyName) {
+        setState({
+          kind: "error",
+          message: 'Não foi possível localizar o nome da empresa no PDF (campo "Empresa:").',
+        });
+        return;
+      }
       const result = analyzeInverted(accounts);
-      setState({ kind: "done", result });
+      setState({ kind: "done", result, fileName: f.name, companyName });
     } catch (e) {
       setState({
         kind: "error",
@@ -178,98 +216,12 @@ function ResultView({ result, fileName }: { result: InvertedResult; fileName: st
 
 
   return (
-    <div className="space-y-8">
-      <Section
-        title="Saldos com natureza invertida"
-        count={result.inverted.length}
-        action={
-          result.inverted.length > 0 ? (
-            <ExportButton onClick={exportInverted} />
-          ) : null
-        }
-      >
-        {result.inverted.length === 0 ? (
-          <EmptyCard message="Nenhum saldo invertido foi encontrado." />
-        ) : (
-
-          <div className="space-y-3">
-            {result.inverted.map((a, i) => (
-              <div
-                key={`${a.classification}-${i}`}
-                className="rounded-lg border-l-4 border-warning bg-card p-5 shadow-sm"
-              >
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="mt-0.5 h-5 w-5 text-warning-foreground" />
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-foreground">
-                      Divergência encontrada: a classificação{" "}
-                      <span className="font-mono">{a.classification}</span> deveria
-                      terminar com saldo {a.expected}, mas o Saldo Atual encontrado
-                      foi {formatBRL(a.saldoAtualNum)} {a.natureza}.
-                    </p>
-                    {a.description && (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {a.description}
-                      </p>
-                    )}
-                    <dl className="mt-3 grid grid-cols-3 gap-3 text-xs">
-                      <Field label="Código" value={a.code || "—"} mono />
-                      <Field
-                        label="Saldo atual"
-                        value={`${formatBRL(a.saldoAtualNum)} ${a.natureza ?? ""}`}
-                      />
-                      <Field label="Regra esperada" value={`Saldo ${a.expected}`} />
-                    </dl>
-
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Section>
-
-      <Section
-        title="Saldos atuais entre R$ 0,01 e R$ 9,99"
-        count={result.lowBalance.length}
-        action={
-          result.lowBalance.length > 0 ? (
-            <ExportButton onClick={exportLowBalance} />
-          ) : null
-        }
-      >
-
-        {result.lowBalance.length === 0 ? (
-          <EmptyCard message="Nenhum saldo atual entre R$ 0,01 e R$ 9,99 foi encontrado." />
-        ) : (
-          <div className="space-y-3">
-            {result.lowBalance.map((a, i) => (
-              <LowBalanceCard key={`${a.classification}-${i}`} account={a} />
-            ))}
-          </div>
-        )}
-      </Section>
-    </div>
-  );
-}
-
-function LowBalanceCard({ account }: { account: AccountRow }) {
-  return (
-    <div className="rounded-lg border-l-4 border-warning bg-card p-5 shadow-sm">
-      <div className="flex items-start gap-3">
-        <AlertTriangle className="mt-0.5 h-5 w-5 text-warning-foreground" />
-        <div className="flex-1">
-          <p className="text-sm font-semibold text-foreground">
-            Atenção: saldo atual baixo identificado. Código:{" "}
-            <span className="font-mono">{account.code || account.classification}</span>. Saldo Atual:{" "}
-            {formatBRL(account.saldoAtualNum)} {account.natureza ?? ""}.
-          </p>
-          {account.description && (
-            <p className="mt-1 text-xs text-muted-foreground">{account.description}</p>
-          )}
-        </div>
-      </div>
-    </div>
+    <InvertedSections
+      inverted={result.inverted}
+      lowBalance={result.lowBalance}
+      invertedAction={<ExportButton onClick={exportInverted} />}
+      lowBalanceAction={<ExportButton onClick={exportLowBalance} />}
+    />
   );
 }
 
@@ -282,55 +234,5 @@ function ExportButton({ onClick }: { onClick: () => void }) {
       <Download className="h-3.5 w-3.5" />
       Exportar Excel
     </button>
-  );
-}
-
-function Section({
-  title,
-  count,
-  action,
-  children,
-}: {
-  title: string;
-  count: number;
-  action?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <section>
-      <div className="mb-3 flex flex-wrap items-center gap-3 border-b border-border pb-2">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          {title}
-        </h2>
-        <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-          {count}
-        </span>
-        {action && <div className="ml-auto">{action}</div>}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-
-function EmptyCard({ message }: { message: string }) {
-  return (
-    <div className="flex items-start gap-3 rounded-lg border border-border bg-card p-5 shadow-sm">
-      <CheckCircle2 className="mt-0.5 h-5 w-5 text-success" />
-      <p className="text-sm text-foreground">{message}</p>
-    </div>
-  );
-}
-
-function Field({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div>
-      <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">
-        {label}
-      </dt>
-      <dd className={`mt-0.5 text-xs font-medium text-foreground ${mono ? "font-mono" : ""}`}>
-        {value}
-      </dd>
-    </div>
   );
 }
