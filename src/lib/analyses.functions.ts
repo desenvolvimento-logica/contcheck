@@ -33,7 +33,8 @@ export const saveAnalysis = createServerFn({ method: "POST" })
       .from("cc_analyses")
       .insert({
         user_id: context.userId,
-        analysis_type: "compare_launches",
+        analysis_type: data.analysisType,
+        details: (data.details ?? {}) as never,
         file_name: data.fileName,
         client_name: data.clientName ?? "",
         months: data.months,
