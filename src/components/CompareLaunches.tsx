@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, Loader2, ArrowLeft, Download } from "lucide-react";
+import { AlertTriangle, Loader2, ArrowLeft, Download } from "lucide-react";
+import { CompareSummaryHeader, DraggableTable } from "./analysis-views";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useServerFn } from "@tanstack/react-start";
