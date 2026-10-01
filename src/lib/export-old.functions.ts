@@ -22,11 +22,9 @@ export const exportOldData = createServerFn({ method: "POST" }).handler(async ()
     return rows;
   }
 
-  return JSON.parse(
-    JSON.stringify({
+  return JSON.stringify({
       cc_profiles: await all("cc_profiles"),
       cc_user_roles: await all("cc_user_roles"),
       cc_analyses: await all("cc_analyses"),
-    }),
-  ) as Record<string, unknown[]>;
+    });
 });

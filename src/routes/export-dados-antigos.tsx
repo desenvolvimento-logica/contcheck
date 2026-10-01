@@ -20,8 +20,9 @@ function ExportPage() {
   async function download() {
     setStatus("Exportando...");
     try {
-      const data = await run();
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const json = await run();
+      const data = JSON.parse(json) as Record<string, unknown[]>;
+      const blob = new Blob([json], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
