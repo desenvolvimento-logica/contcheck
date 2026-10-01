@@ -335,7 +335,7 @@ export function extractCompanyName(rows: PdfRow[]): string {
   for (const row of rows) {
     for (let i = 0; i < row.tokens.length; i++) {
       const t = row.tokens[i];
-      const m = t.match(/^empresa\s*:\s*(.*)$/i);
+      const m = t.match(/^(?:empresa|sociedade)\s*:\s*(.*)$/i);
       if (!m) continue;
       let name = m[1].trim();
       if (!name && i + 1 < row.tokens.length) {
