@@ -143,7 +143,7 @@ export function CompareLaunches({ onBack }: Props) {
 
       <div>
         <h1 className="text-2xl font-semibold text-foreground">
-          Comparar Lançamentos Contábeis
+          Comparativo de Movimentos
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Analisa todas as classificações de 5º nível (x.x.x.xx.xxx) do relatório

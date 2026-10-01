@@ -41,14 +41,12 @@ function Home({ onSelect }: { onSelect: (v: View) => void }) {
       <div className="mt-10 grid gap-4 sm:grid-cols-2">
         <Card
           icon={<GitCompareArrows className="h-5 w-5" />}
-          title="Comparar Lançamentos Contábeis"
-          description="Identifica variações superiores ao limite para todas as classificações de 5º nível."
+          title="Comparativo de Movimentos"
           onClick={() => onSelect("compare")}
         />
         <Card
           icon={<Scale className="h-5 w-5" />}
-          title="Analisar Saldo Invertido"
-          description="Valida a natureza (D/C) do Saldo Atual conforme a classificação e detecta saldos baixos."
+          title="Analisar Balancete"
           onClick={() => onSelect("inverted")}
         />
       </div>
@@ -59,12 +57,10 @@ function Home({ onSelect }: { onSelect: (v: View) => void }) {
 function Card({
   icon,
   title,
-  description,
   onClick,
 }: {
   icon: React.ReactNode;
   title: string;
-  description: string;
   onClick: () => void;
 }) {
   return (
@@ -80,7 +76,6 @@ function Card({
       </div>
       <div>
         <h3 className="text-base font-semibold text-foreground">{title}</h3>
-        <p className="mt-1.5 text-sm text-muted-foreground">{description}</p>
       </div>
       <div className="mt-auto h-1 w-10 rounded-full bg-accent transition-all group-hover:w-16" />
     </button>
