@@ -102,7 +102,7 @@ export function CompareLaunches({ onBack }: Props) {
       if (!result.companyName) {
         setState({
           kind: "error",
-          message: 'Não foi possível localizar o nome da empresa no PDF (campo "Empresa:").',
+          message: 'Não foi possível localizar o nome da empresa no PDF (campo "Empresa:" ou "Sociedade:").',
         });
         return;
       }
