@@ -103,7 +103,7 @@ export function InvertedBalance({ onBack }: Props) {
 
       <div>
         <h1 className="text-2xl font-semibold text-foreground">
-          Analisar Saldo Invertido
+          Analisar Balancete
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Valida a natureza do saldo conforme a classificação contábil e identifica
